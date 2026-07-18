@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 from app.models.assistant import AssistantRequest
 from app.models.schedule import PlanningRequest, PlanningResponse
 from app.repositories.task_repository import TaskRepository
-from app.services.mock_ai_service import MockAIService
+from app.services.ai_service import AIService
 from app.services.planner_service import PlannerService
 
 
 class AssistantService:
-    def __init__(self) -> None:
-        self.ai_service = MockAIService()
+    def __init__(self, ai_service: AIService) -> None:
+        self.ai_service = ai_service
         self.planner_service = PlannerService()
         self.task_repository = TaskRepository()
 

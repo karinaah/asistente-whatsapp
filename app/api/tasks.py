@@ -1,22 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.dependencies import get_db
-from app.exceptions.task_exceptions import TaskNotFoundError
 from app.models.task import Task, TaskRequest, TaskResponse, TaskUpdate
-from app.services.mock_ai_service import MockAIService
+from app.config.service_dependencies import (
+    get_ai_service,
+    get_task_service,
+)
 from app.services.task_service import TaskService
-
+from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
-mock_ai_service = MockAIService()
-task_service = TaskService()
-
 
 @router.post("/extract", response_model=TaskResponse)
-def extract_tasks(request: TaskRequest) -> TaskResponse:
-    tasks = mock_ai_service.extract_tasks(request.text)
+def extract_tasks(
+    request: TaskRequest,
+    ai_service: AIService = Depends(get_ai_service),
+) -> TaskResponse:
+    tasks = ai_service.extract_tasks(request.text)
 
     return TaskResponse(tasks=tasks)
 
@@ -24,6 +26,7 @@ def extract_tasks(request: TaskRequest) -> TaskResponse:
 @router.get("/", response_model=list[Task])
 def get_tasks(
     db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
 ):
     return task_service.get_all(db)
 
@@ -32,57 +35,41 @@ def get_tasks(
 def complete_task(
     task_id: int,
     db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
 ):
-    try:
-        return task_service.mark_completed(
-            db=db,
-            task_id=task_id,
-        )
-    except TaskNotFoundError as error:
-        raise HTTPException(
-            status_code=404,
-            detail=str(error),
-        ) from error
+    return task_service.mark_completed(
+        db=db,
+        task_id=task_id,
+    )
 
 
 @router.delete("/{task_id}")
 def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
 ):
-    try:
-        task_service.delete(
-            db=db,
-            task_id=task_id,
-        )
+    task_service.delete(
+        db=db,
+        task_id=task_id,
+    )
 
-        return {
-            "message": "Tarea eliminada correctamente",
-            "task_id": task_id,
-        }
-
-    except TaskNotFoundError as error:
-        raise HTTPException(
-            status_code=404,
-            detail=str(error),
-        ) from error
+    return {
+        "message": "Tarea eliminada correctamente",
+        "task_id": task_id,
+    }
 
 
 @router.get("/{task_id}", response_model=Task)
 def get_task_by_id(
     task_id: int,
     db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
 ):
-    try:
-        return task_service.get_by_id(
-            db=db,
-            task_id=task_id,
-        )
-    except TaskNotFoundError as error:
-        raise HTTPException(
-            status_code=404,
-            detail=str(error),
-        ) from error
+    return task_service.get_by_id(
+        db=db,
+        task_id=task_id,
+    )
 
 
 @router.patch("/{task_id}", response_model=Task)
@@ -90,15 +77,10 @@ def update_task(
     task_id: int,
     request: TaskUpdate,
     db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
 ):
-    try:
-        return task_service.update(
-            db=db,
-            task_id=task_id,
-            request=request,
-        )
-    except TaskNotFoundError as error:
-        raise HTTPException(
-            status_code=404,
-            detail=str(error),
-        ) from error
+    return task_service.update(
+        db=db,
+        task_id=task_id,
+        request=request,
+    )

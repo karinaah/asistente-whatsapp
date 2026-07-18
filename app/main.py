@@ -9,7 +9,7 @@ from app.config.database import Base, engine
 from app.config.logging_config import configure_logging
 from app.config.settings import settings
 from app.models.task_db import TaskDB
-
+from app.handlers.exception_handlers import register_exception_handlers
 
 configure_logging()
 
@@ -22,7 +22,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
 )
-
+register_exception_handlers(app)
 
 @app.on_event("startup")
 def on_startup() -> None:

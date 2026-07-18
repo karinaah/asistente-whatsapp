@@ -1,0 +1,2 @@
+class AIServiceError(Exception):
+    pass

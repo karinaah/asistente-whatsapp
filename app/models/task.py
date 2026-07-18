@@ -47,7 +47,8 @@ class TaskRequest(BaseModel):
 class TaskResponse(BaseModel):
     tasks: list[Task]
 
-
+class ExtractedTasks(BaseModel):
+    tasks: list[Task]
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
