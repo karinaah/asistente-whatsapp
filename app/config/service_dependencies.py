@@ -1,10 +1,12 @@
 from fastapi import Depends
 
 from app.config.settings import settings
+from app.repositories.task_repository import TaskRepository
 from app.services.ai_service import AIService
 from app.services.assistant_service import AssistantService
 from app.services.mock_ai_service import MockAIService
 from app.services.openai_service import OpenAIService
+from app.services.planner_service import PlannerService
 from app.services.task_service import TaskService
 
 
@@ -22,4 +24,11 @@ def get_ai_service() -> AIService:
 def get_assistant_service(
     ai_service: AIService = Depends(get_ai_service),
 ) -> AssistantService:
-    return AssistantService(ai_service=ai_service)
+    planner_service = PlannerService()
+    task_repository = TaskRepository()
+
+    return AssistantService(
+        ai_service=ai_service,
+        planner_service=planner_service,
+        task_repository=task_repository,
+    )
