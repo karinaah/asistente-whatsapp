@@ -1,9 +1,12 @@
+import re
+
 from app.models.task import Task, TaskCategory, TaskPriority
 
 
 class MockAIService:
     def extract_tasks(self, text: str) -> list[Task]:
         normalized_text = text.lower()
+        estimated_minutes = self._extract_duration_minutes(normalized_text)
 
         tasks: list[Task] = []
 
@@ -11,7 +14,7 @@ class MockAIService:
             tasks.append(
                 Task(
                     title="Hacer yoga",
-                    estimated_minutes=60,
+                    estimated_minutes=estimated_minutes or 60,
                     priority=TaskPriority.medium,
                     category=TaskCategory.health,
                 )
@@ -21,7 +24,7 @@ class MockAIService:
             tasks.append(
                 Task(
                     title="Revisar tesis",
-                    estimated_minutes=120,
+                    estimated_minutes=estimated_minutes or 120,
                     priority=TaskPriority.high,
                     category=TaskCategory.study,
                 )
@@ -31,7 +34,7 @@ class MockAIService:
             tasks.append(
                 Task(
                     title="Preparar clase",
-                    estimated_minutes=120,
+                    estimated_minutes=estimated_minutes or 120,
                     priority=TaskPriority.high,
                     category=TaskCategory.work,
                 )
@@ -41,7 +44,7 @@ class MockAIService:
             tasks.append(
                 Task(
                     title="Tomar creatina",
-                    estimated_minutes=5,
+                    estimated_minutes=estimated_minutes or 5,
                     priority=TaskPriority.medium,
                     category=TaskCategory.health,
                 )
@@ -51,8 +54,29 @@ class MockAIService:
             tasks.append(
                 Task(
                     title=text.strip(),
-                    estimated_minutes=30,
+                    estimated_minutes=estimated_minutes or 30,
                 )
             )
 
         return tasks
+
+    def _extract_duration_minutes(self, text: str) -> int | None:
+        hours_match = re.search(
+            r"(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b",
+            text,
+        )
+        minutes_match = re.search(
+            r"(\d+)\s*(?:minutos?|mins?|min)\b",
+            text,
+        )
+
+        total_minutes = 0
+
+        if hours_match:
+            hours = float(hours_match.group(1).replace(",", "."))
+            total_minutes += round(hours * 60)
+
+        if minutes_match:
+            total_minutes += int(minutes_match.group(1))
+
+        return total_minutes or None

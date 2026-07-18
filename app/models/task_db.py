@@ -50,6 +50,11 @@ class TaskDB(Base):
         nullable=True,
     )
 
+    preferred_time_of_day: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
     location: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True,

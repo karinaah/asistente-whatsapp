@@ -24,6 +24,10 @@ class TaskCategory(str, Enum):
     errands = "tramites"
     other = "otro"
 
+class PreferredTimeOfDay(str, Enum):
+    morning = "mañana"
+    afternoon = "tarde"
+    evening = "noche"
 
 class Task(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -36,10 +40,11 @@ class Task(BaseModel):
     category: TaskCategory = TaskCategory.other
     status: TaskStatus = TaskStatus.pending
     deadline: datetime | None = None
+    preferred_time_of_day: PreferredTimeOfDay | None = None
     location: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-
+    
 class TaskRequest(BaseModel):
     text: str = Field(min_length=1)
 
@@ -58,4 +63,5 @@ class TaskUpdate(BaseModel):
     category: TaskCategory | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
+    preferred_time_of_day: PreferredTimeOfDay | None = None
     location: str | None = None

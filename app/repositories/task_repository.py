@@ -14,6 +14,11 @@ class TaskRepository:
             category=task.category.value,
             status=task.status.value,
             deadline=task.deadline,
+            preferred_time_of_day=(
+                task.preferred_time_of_day.value
+                if task.preferred_time_of_day is not None
+                else None
+            ),
             location=task.location,
         )
 
@@ -88,6 +93,7 @@ class TaskRepository:
         category: str | None = None,
         status: str | None = None,
         deadline=None,
+        preferred_time_of_day: str | None = None,
         location: str | None = None,
     ) -> TaskDB | None:
         task_db = (
@@ -119,6 +125,9 @@ class TaskRepository:
 
         if deadline is not None:
             task_db.deadline = deadline
+
+        if preferred_time_of_day is not None:
+            task_db.preferred_time_of_day = preferred_time_of_day
 
         if location is not None:
             task_db.location = location

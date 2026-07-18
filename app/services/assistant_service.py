@@ -5,6 +5,7 @@ from app.models.schedule import PlanningRequest, PlanningResponse
 from app.repositories.task_repository import TaskRepository
 from app.services.ai_service import AIService
 from app.services.planner_service import PlannerService
+from app.services.task_analyzer_service import TaskAnalyzerService
 
 
 class AssistantService:
@@ -13,21 +14,28 @@ class AssistantService:
         ai_service: AIService,
         planner_service: PlannerService,
         task_repository: TaskRepository,
+        task_analyzer_service: TaskAnalyzerService,
     ) -> None:
         self.ai_service = ai_service
         self.planner_service = planner_service
         self.task_repository = task_repository
+        self.task_analyzer_service = task_analyzer_service
 
     def process(
         self,
         db: Session,
         request: AssistantRequest,
     ) -> PlanningResponse:
-        tasks = self.ai_service.extract_tasks(request.text)
+        extracted_tasks = self.ai_service.extract_tasks(request.text)
+
+        analyzed_tasks = self.task_analyzer_service.analyze(
+            extracted_tasks,
+            reference_date=request.plan_date,
+        )
 
         saved_tasks = []
 
-        for task in tasks:
+        for task in analyzed_tasks:
             saved_task = self.task_repository.save(db, task)
             saved_tasks.append(saved_task)
 
