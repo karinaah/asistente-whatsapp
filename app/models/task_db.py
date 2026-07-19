@@ -1,6 +1,5 @@
-from datetime import datetime
-
-from sqlalchemy import DateTime, Integer, String
+from datetime import date, datetime, time
+from sqlalchemy import Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -50,13 +49,23 @@ class TaskDB(Base):
         nullable=True,
     )
 
+    preferred_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
     preferred_time_of_day: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True,
     )
 
+    preferred_start_time: Mapped[time | None] = mapped_column(
+        Time,
+        nullable=True,
+    )
+
     location: Mapped[str | None] = mapped_column(
-        String(200),
+        String(255),
         nullable=True,
     )
 

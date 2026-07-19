@@ -9,6 +9,7 @@ from app.services.openai_service import OpenAIService
 from app.services.planner_service import PlannerService
 from app.services.task_analyzer_service import TaskAnalyzerService
 from app.services.task_service import TaskService
+from app.services.temporal_parser import TemporalParser
 
 
 def get_task_service() -> TaskService:
@@ -22,12 +23,28 @@ def get_ai_service() -> AIService:
     return OpenAIService()
 
 
+def get_temporal_parser() -> TemporalParser:
+    return TemporalParser()
+
+
+def get_task_analyzer_service(
+    temporal_parser: TemporalParser = Depends(
+        get_temporal_parser
+    ),
+) -> TaskAnalyzerService:
+    return TaskAnalyzerService(
+        temporal_parser=temporal_parser,
+    )
+
+
 def get_assistant_service(
     ai_service: AIService = Depends(get_ai_service),
+    task_analyzer_service: TaskAnalyzerService = Depends(
+        get_task_analyzer_service
+    ),
 ) -> AssistantService:
     planner_service = PlannerService()
     task_repository = TaskRepository()
-    task_analyzer_service = TaskAnalyzerService()
 
     return AssistantService(
         ai_service=ai_service,

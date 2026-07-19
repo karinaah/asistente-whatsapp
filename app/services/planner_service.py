@@ -18,10 +18,6 @@ class PlannerService:
             time(hour=request.day_start_hour),
         )
 
-        day_end = datetime.combine(
-            request.plan_date,
-            time.min,
-        ) + timedelta(hours=request.day_end_hour)
 
         ordered_tasks = self.task_sorter.sort(request.tasks)
 
@@ -38,6 +34,21 @@ class PlannerService:
         unscheduled_tasks = []
 
         for task in ordered_tasks:
+            task_date = task.preferred_date or request.plan_date
+
+            task_day_start = datetime.combine(
+                task_date,
+                time(hour=request.day_start_hour),
+            )
+
+            task_day_end = datetime.combine(
+                task_date,
+                time.min,
+            ) + timedelta(hours=request.day_end_hour)
+
+            if current_time.date() != task_date:
+                current_time = task_day_start
+
             task_duration = timedelta(
                 minutes=task.estimated_minutes
             )
@@ -51,7 +62,7 @@ class PlannerService:
 
             task_end = current_time + task_duration
 
-            if task_end > day_end:
+            if task_end > task_day_end:
                 unscheduled_tasks.append(task)
                 continue
 

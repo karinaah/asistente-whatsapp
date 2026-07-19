@@ -1,17 +1,17 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date
 
-from app.config.task_analysis_rules import (
-    CATEGORY_KEYWORDS,
-    TIME_OF_DAY_KEYWORDS,
-)
-from app.models.task import (
-    PreferredTimeOfDay,
-    Task,
-    TaskCategory,
-)
+from app.config.task_analysis_rules import CATEGORY_KEYWORDS
+from app.models.task import Task, TaskCategory
+from app.services.temporal_parser import TemporalParser
 
 
 class TaskAnalyzerService:
+    def __init__(
+        self,
+        temporal_parser: TemporalParser,
+    ) -> None:
+        self.temporal_parser = temporal_parser
+
     def analyze(
         self,
         tasks: list[Task],
@@ -29,7 +29,16 @@ class TaskAnalyzerService:
     ) -> Task:
         updates = {}
 
-        inferred_category = self._infer_category(task)
+        searchable_text = self._build_searchable_text(task)
+
+        temporal_data = self.temporal_parser.parse(
+            text=searchable_text,
+            reference_date=reference_date,
+        )
+
+        inferred_category = self._infer_category(
+            searchable_text
+        )
 
         if (
             task.category == TaskCategory.other
@@ -37,17 +46,30 @@ class TaskAnalyzerService:
         ):
             updates["category"] = inferred_category
 
-        inferred_deadline = self._infer_deadline(
-            task,
-            reference_date,
-        )
+        inferred_deadline = temporal_data["deadline"]
 
-        if task.deadline is None and inferred_deadline is not None:
+        if (
+            task.deadline is None
+            and inferred_deadline is not None
+        ):
             updates["deadline"] = inferred_deadline
 
-        inferred_preferred_time = (
-            self._infer_preferred_time_of_day(task)
-        )
+        inferred_preferred_date = temporal_data[
+            "preferred_date"
+        ]
+
+        if (
+            task.preferred_date is None
+            and inferred_preferred_date is not None
+        ):
+            updates["preferred_date"] = (
+                inferred_preferred_date
+            )
+
+
+        inferred_preferred_time = temporal_data[
+            "preferred_time_of_day"
+        ]
 
         if (
             task.preferred_time_of_day is None
@@ -64,10 +86,8 @@ class TaskAnalyzerService:
 
     def _infer_category(
         self,
-        task: Task,
+        searchable_text: str,
     ) -> TaskCategory | None:
-        searchable_text = self._build_searchable_text(task)
-
         for category, keywords in CATEGORY_KEYWORDS.items():
             if any(
                 keyword in searchable_text
@@ -77,46 +97,15 @@ class TaskAnalyzerService:
 
         return None
 
-    def _infer_deadline(
+    def _build_searchable_text(
         self,
         task: Task,
-        reference_date: date,
-    ) -> datetime | None:
-        searchable_text = self._build_searchable_text(task)
-
-        if "mañana" in searchable_text:
-            deadline_date = reference_date + timedelta(days=1)
-            return datetime.combine(
-                deadline_date,
-                time(hour=23, minute=59),
-            )
-
-        if "hoy" in searchable_text:
-            return datetime.combine(
-                reference_date,
-                time(hour=23, minute=59),
-            )
-
-        return None
-
-    def _infer_preferred_time_of_day(
-        self,
-        task: Task,
-    ) -> PreferredTimeOfDay | None:
-        searchable_text = self._build_searchable_text(task)
-
-        for preferred_time, keywords in TIME_OF_DAY_KEYWORDS.items():
-            if any(
-                keyword in searchable_text
-                for keyword in keywords
-            ):
-                return preferred_time
-
-        return None
-
-    def _build_searchable_text(self, task: Task) -> str:
+    ) -> str:
         return " ".join(
             value
-            for value in (task.title, task.description)
+            for value in (
+                task.title,
+                task.description,
+            )
             if value
         ).lower()

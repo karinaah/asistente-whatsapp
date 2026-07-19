@@ -1,8 +1,8 @@
+from datetime import date, time
 from sqlalchemy.orm import Session
 
 from app.models.task import Task
 from app.models.task_db import TaskDB
-
 
 class TaskRepository:
     def save(self, db: Session, task: Task) -> TaskDB:
@@ -14,11 +14,13 @@ class TaskRepository:
             category=task.category.value,
             status=task.status.value,
             deadline=task.deadline,
+            preferred_date=task.preferred_date,
             preferred_time_of_day=(
                 task.preferred_time_of_day.value
                 if task.preferred_time_of_day is not None
                 else None
             ),
+            preferred_start_time=task.preferred_start_time,
             location=task.location,
         )
 
@@ -93,7 +95,9 @@ class TaskRepository:
         category: str | None = None,
         status: str | None = None,
         deadline=None,
+        preferred_date: date | None = None,
         preferred_time_of_day: str | None = None,
+        preferred_start_time: time | None = None,
         location: str | None = None,
     ) -> TaskDB | None:
         task_db = (
@@ -126,8 +130,14 @@ class TaskRepository:
         if deadline is not None:
             task_db.deadline = deadline
 
+        if preferred_date is not None:
+            task_db.preferred_date = preferred_date
+
         if preferred_time_of_day is not None:
             task_db.preferred_time_of_day = preferred_time_of_day
+
+        if preferred_start_time is not None:
+            task_db.preferred_start_time = preferred_start_time       
 
         if location is not None:
             task_db.location = location

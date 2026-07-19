@@ -71,6 +71,13 @@ class TaskService:
             category=request.category.value if request.category else None,
             status=request.status.value if request.status else None,
             deadline=request.deadline,
+            preferred_date=request.preferred_date,
+            preferred_time_of_day=(
+                request.preferred_time_of_day.value
+                if request.preferred_time_of_day
+                else None
+            ),
+            preferred_start_time=request.preferred_start_time,
             location=request.location,
         )
 

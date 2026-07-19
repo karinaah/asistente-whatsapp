@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,7 +40,9 @@ class Task(BaseModel):
     category: TaskCategory = TaskCategory.other
     status: TaskStatus = TaskStatus.pending
     deadline: datetime | None = None
+    preferred_date: date | None = None
     preferred_time_of_day: PreferredTimeOfDay | None = None
+    preferred_start_time: time | None = None
     location: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -63,5 +65,7 @@ class TaskUpdate(BaseModel):
     category: TaskCategory | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
+    preferred_date: date | None = None
     preferred_time_of_day: PreferredTimeOfDay | None = None
+    preferred_start_time: time | None = None
     location: str | None = None
