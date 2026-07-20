@@ -39,7 +39,7 @@ class PlannerService:
 
         scheduled_tasks: list[ScheduledTask] = []
         unscheduled_tasks = []
-        timeline: list[TimeBlock] = list(busy_blocks)
+        generated_breaks: list[TimeBlock] = []
 
         for task in ordered_tasks:
             task_date = (
@@ -93,7 +93,7 @@ class PlannerService:
                 continue
 
             if collision_break is not None:
-                timeline.append(collision_break)
+                generated_breaks.append(collision_break)
 
             scheduled_tasks.append(
                 ScheduledTask(
@@ -103,28 +103,87 @@ class PlannerService:
                 )
             )
 
-            timeline.append(
-                TimeBlock(
-                    start_time=current_time,
-                    end_time=task_end,
-                    title=task.title,
-                    block_type=BlockType.TASK,
-                )
-            )
-
             current_time = task_end + timedelta(
                 minutes=request.break_minutes
             )
 
-        timeline.sort(
-            key=lambda block: block.start_time
-        )
+            timeline = self._build_timeline(
+                busy_blocks=busy_blocks,
+                scheduled_tasks=scheduled_tasks,
+                generated_breaks=generated_breaks,
+                break_minutes=request.break_minutes,
+            )
 
         return PlanningResponse(
             scheduled_tasks=scheduled_tasks,
             unscheduled_tasks=unscheduled_tasks,
             timeline=timeline,
         )
+
+    def _build_timeline(
+        self,
+        busy_blocks: list[TimeBlock],
+        scheduled_tasks: list[ScheduledTask],
+        generated_breaks: list[TimeBlock],
+        break_minutes: int,
+    ) -> list[TimeBlock]:
+        timeline = list(busy_blocks)
+        timeline.extend(generated_breaks)
+
+        ordered_scheduled_tasks = sorted(
+            scheduled_tasks,
+            key=lambda scheduled_task: scheduled_task.start_time,
+        )
+
+        for index, scheduled_task in enumerate(
+            ordered_scheduled_tasks
+        ):
+            timeline.append(
+                TimeBlock(
+                    start_time=scheduled_task.start_time,
+                    end_time=scheduled_task.end_time,
+                    title=scheduled_task.task.title,
+                    block_type=BlockType.TASK,
+                )
+            )
+
+            is_last_task = (
+                index == len(ordered_scheduled_tasks) - 1
+            )
+
+            if is_last_task or break_minutes <= 0:
+                continue
+
+            next_scheduled_task = ordered_scheduled_tasks[
+                index + 1
+            ]
+
+            expected_next_start = (
+                scheduled_task.end_time
+                + timedelta(minutes=break_minutes)
+            )
+
+            has_planned_break = (
+                next_scheduled_task.start_time
+                == expected_next_start
+            )
+
+            if has_planned_break:
+                timeline.append(
+                    TimeBlock(
+                        start_time=scheduled_task.end_time,
+                        end_time=expected_next_start,
+                        title="Descanso",
+                        block_type=BlockType.BREAK,
+                    )
+                )
+
+        timeline.sort(
+            key=lambda block: block.start_time
+        )
+
+        return timeline
+
 
     def _find_available_time(
         self,
