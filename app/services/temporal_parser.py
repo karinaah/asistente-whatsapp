@@ -3,7 +3,7 @@ from typing import Any
 
 from app.config.task_analysis_rules import TIME_OF_DAY_KEYWORDS
 from app.models.task import PreferredTimeOfDay
-
+import re
 
 class TemporalParser:
     """Interpreta información temporal a partir de texto."""
@@ -15,11 +15,25 @@ class TemporalParser:
     ) -> dict[str, Any]:
         searchable_text = text.lower()
 
+        preferred_start_time = self._infer_preferred_start_time(
+            searchable_text
+        )
+
         preferred_time_of_day = (
             self._infer_preferred_time_of_day(
                 searchable_text
             )
         )
+
+        if (
+            preferred_time_of_day is None
+            and preferred_start_time is not None
+        ):
+            preferred_time_of_day = (
+                self._infer_time_of_day_from_time(
+                    preferred_start_time
+                )
+            )
 
         deadline = self._infer_deadline(
             searchable_text,
@@ -31,10 +45,12 @@ class TemporalParser:
             reference_date,
         )
 
+
         return {
             "deadline": deadline,
             "preferred_date": preferred_date,
             "preferred_time_of_day": preferred_time_of_day,
+            "preferred_start_time": preferred_start_time,
         }
 
     def _infer_preferred_time_of_day(
@@ -137,3 +153,61 @@ class TemporalParser:
                 )
 
         return cleaned_text
+    
+    def _infer_preferred_start_time(
+        self,
+        searchable_text: str,
+    ) -> time | None:
+        pattern = (
+            r"\ba\s+las?\s+"
+            r"(?P<hour>\d{1,2})"
+            r"(?:[:.](?P<minute>\d{2}))?"
+            r"\s*(?P<period>am|pm|a\.m\.|p\.m\.)?"
+            r"\b"
+        )
+
+        match = re.search(pattern, searchable_text)
+
+        if match is None:
+            return None
+
+        hour = int(match.group("hour"))
+        minute = int(match.group("minute") or 0)
+        period = match.group("period")
+
+        if minute > 59:
+            return None
+
+        if period is not None:
+            normalized_period = period.replace(".", "")
+
+            if hour < 1 or hour > 12:
+                return None
+
+            if normalized_period == "pm" and hour != 12:
+                hour += 12
+
+            if normalized_period == "am" and hour == 12:
+                hour = 0
+
+        elif hour > 23:
+            return None
+
+        return time(
+            hour=hour,
+            minute=minute,
+        )
+    
+    def _infer_time_of_day_from_time(
+        self,
+        preferred_start_time: time,
+    ) -> PreferredTimeOfDay:
+        hour = preferred_start_time.hour
+
+        if hour < 12:
+            return PreferredTimeOfDay.morning
+
+        if hour < 18:
+            return PreferredTimeOfDay.afternoon
+
+        return PreferredTimeOfDay.evening

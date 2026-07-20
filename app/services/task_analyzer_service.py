@@ -66,7 +66,6 @@ class TaskAnalyzerService:
                 inferred_preferred_date
             )
 
-
         inferred_preferred_time = temporal_data[
             "preferred_time_of_day"
         ]
@@ -77,6 +76,18 @@ class TaskAnalyzerService:
         ):
             updates["preferred_time_of_day"] = (
                 inferred_preferred_time
+            )
+
+        inferred_preferred_start_time = temporal_data[
+            "preferred_start_time"
+        ]
+
+        if (
+            task.preferred_start_time is None
+            and inferred_preferred_start_time is not None
+        ):
+            updates["preferred_start_time"] = (
+                inferred_preferred_start_time
             )
 
         if not updates:

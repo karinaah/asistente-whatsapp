@@ -61,14 +61,10 @@ TIME_OF_DAY_KEYWORDS: dict[
         "por la mañana",
         "en la mañana",
         "mañana temprano",
-        "am",
-        "a.m.",
     ),
     PreferredTimeOfDay.afternoon: (
         "por la tarde",
         "en la tarde",
-        "pm",
-        "p.m.",
     ),
     PreferredTimeOfDay.evening: (
         "por la noche",

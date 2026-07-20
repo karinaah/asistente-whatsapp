@@ -12,18 +12,24 @@ class PlannerService:
     def __init__(self):
         self.task_sorter = TaskSorter()
 
-    def create_plan(self, request: PlanningRequest) -> PlanningResponse:
+    def create_plan(
+        self,
+        request: PlanningRequest,
+    ) -> PlanningResponse:
         current_time = datetime.combine(
             request.plan_date,
             time(hour=request.day_start_hour),
         )
 
-
         ordered_tasks = self.task_sorter.sort(request.tasks)
 
         for block in request.busy_blocks:
-            block.start_time = block.start_time.replace(tzinfo=None)
-            block.end_time = block.end_time.replace(tzinfo=None)
+            block.start_time = block.start_time.replace(
+                tzinfo=None
+            )
+            block.end_time = block.end_time.replace(
+                tzinfo=None
+            )
 
         busy_blocks = sorted(
             request.busy_blocks,
@@ -34,19 +40,35 @@ class PlannerService:
         unscheduled_tasks = []
 
         for task in ordered_tasks:
-            task_date = task.preferred_date or request.plan_date
+            task_date = (
+                task.preferred_date
+                or request.plan_date
+            )
 
             task_day_start = datetime.combine(
                 task_date,
                 time(hour=request.day_start_hour),
             )
 
+            if task.preferred_start_time is not None:
+                preferred_datetime = datetime.combine(
+                    task_date,
+                    task.preferred_start_time,
+                )
+
+                if preferred_datetime > task_day_start:
+                    task_day_start = preferred_datetime
+
             task_day_end = datetime.combine(
                 task_date,
                 time.min,
-            ) + timedelta(hours=request.day_end_hour)
+            ) + timedelta(
+                hours=request.day_end_hour
+            )
 
             if current_time.date() != task_date:
+                current_time = task_day_start
+            elif current_time < task_day_start:
                 current_time = task_day_start
 
             task_duration = timedelta(
