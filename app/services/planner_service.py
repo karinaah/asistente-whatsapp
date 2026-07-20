@@ -5,6 +5,7 @@ from app.models.schedule import (
     PlanningResponse,
     ScheduledTask,
 )
+from app.models.time_block import BlockType, TimeBlock
 from app.services.task_sorter import TaskSorter
 
 
@@ -38,6 +39,7 @@ class PlannerService:
 
         scheduled_tasks: list[ScheduledTask] = []
         unscheduled_tasks = []
+        timeline: list[TimeBlock] = list(busy_blocks)
 
         for task in ordered_tasks:
             task_date = (
@@ -75,11 +77,13 @@ class PlannerService:
                 minutes=task.estimated_minutes
             )
 
-            current_time = self._find_available_time(
-                current_time=current_time,
-                task_duration=task_duration,
-                busy_blocks=busy_blocks,
-                break_minutes=request.break_minutes,
+            current_time, collision_break = (
+                self._find_available_time(
+                    current_time=current_time,
+                    task_duration=task_duration,
+                    busy_blocks=busy_blocks,
+                    break_minutes=request.break_minutes,
+                )
             )
 
             task_end = current_time + task_duration
@@ -87,6 +91,9 @@ class PlannerService:
             if task_end > task_day_end:
                 unscheduled_tasks.append(task)
                 continue
+
+            if collision_break is not None:
+                timeline.append(collision_break)
 
             scheduled_tasks.append(
                 ScheduledTask(
@@ -96,22 +103,38 @@ class PlannerService:
                 )
             )
 
+            timeline.append(
+                TimeBlock(
+                    start_time=current_time,
+                    end_time=task_end,
+                    title=task.title,
+                    block_type=BlockType.TASK,
+                )
+            )
+
             current_time = task_end + timedelta(
                 minutes=request.break_minutes
             )
 
+        timeline.sort(
+            key=lambda block: block.start_time
+        )
+
         return PlanningResponse(
             scheduled_tasks=scheduled_tasks,
             unscheduled_tasks=unscheduled_tasks,
+            timeline=timeline,
         )
 
     def _find_available_time(
         self,
         current_time: datetime,
         task_duration: timedelta,
-        busy_blocks: list,
+        busy_blocks: list[TimeBlock],
         break_minutes: int,
-    ) -> datetime:
+    ) -> tuple[datetime, TimeBlock | None]:
+        last_collision_end: datetime | None = None
+
         for block in busy_blocks:
             task_end = current_time + task_duration
 
@@ -121,8 +144,25 @@ class PlannerService:
             )
 
             if has_collision:
+                last_collision_end = block.end_time
+
                 current_time = block.end_time + timedelta(
                     minutes=break_minutes
                 )
 
-        return current_time
+        collision_break = None
+
+        if (
+            last_collision_end is not None
+            and break_minutes > 0
+        ):
+            collision_break = TimeBlock(
+                start_time=last_collision_end,
+                end_time=last_collision_end + timedelta(
+                    minutes=break_minutes
+                ),
+                title="Descanso",
+                block_type=BlockType.BREAK,
+            )
+
+        return current_time, collision_break

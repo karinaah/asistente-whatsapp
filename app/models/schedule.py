@@ -22,3 +22,4 @@ class PlanningRequest(BaseModel):
 class PlanningResponse(BaseModel):
     scheduled_tasks: list[ScheduledTask]
     unscheduled_tasks: list[Task]
+    timeline: list[TimeBlock]
