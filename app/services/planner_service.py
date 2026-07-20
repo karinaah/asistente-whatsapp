@@ -107,12 +107,12 @@ class PlannerService:
                 minutes=request.break_minutes
             )
 
-            timeline = self._build_timeline(
-                busy_blocks=busy_blocks,
-                scheduled_tasks=scheduled_tasks,
-                generated_breaks=generated_breaks,
-                break_minutes=request.break_minutes,
-            )
+        timeline = self._build_timeline(
+            busy_blocks=busy_blocks,
+            scheduled_tasks=scheduled_tasks,
+            generated_breaks=generated_breaks,
+            break_minutes=request.break_minutes,
+        )
 
         return PlanningResponse(
             scheduled_tasks=scheduled_tasks,
@@ -183,7 +183,6 @@ class PlannerService:
         )
 
         return timeline
-
 
     def _find_available_time(
         self,
