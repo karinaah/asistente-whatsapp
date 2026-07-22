@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 
 from app.models.schedule import (
@@ -7,6 +8,13 @@ from app.models.schedule import (
 )
 from app.models.time_block import BlockType, TimeBlock
 from app.services.task_sorter import TaskSorter
+
+
+@dataclass
+class AvailableSlot:
+    start_time: datetime
+    end_time: datetime
+    preceding_break: TimeBlock | None = None
 
 
 class PlannerService:
@@ -77,28 +85,39 @@ class PlannerService:
                 minutes=task.estimated_minutes
             )
 
-            current_time, collision_break = (
-                self._find_available_time(
-                    current_time=current_time,
-                    task_duration=task_duration,
-                    busy_blocks=busy_blocks,
-                    break_minutes=request.break_minutes,
-                )
+            available_slots = self._find_available_slots(
+                current_time=current_time,
+                task_duration=task_duration,
+                busy_blocks=busy_blocks,
+                break_minutes=request.break_minutes,
+                day_end=task_day_end,
             )
 
-            task_end = current_time + task_duration
+            if not available_slots:
+                unscheduled_tasks.append(task)
+                continue
+
+            selected_slot = self._choose_best_slot(
+                available_slots=available_slots,
+                task=task,
+            )                       
+
+            task_start = selected_slot.start_time
+            task_end = task_start + task_duration
 
             if task_end > task_day_end:
                 unscheduled_tasks.append(task)
                 continue
 
-            if collision_break is not None:
-                generated_breaks.append(collision_break)
+            if selected_slot.preceding_break is not None:
+                generated_breaks.append(
+                    selected_slot.preceding_break
+                )
 
             scheduled_tasks.append(
                 ScheduledTask(
                     task=task,
-                    start_time=current_time,
+                    start_time=task_start,
                     end_time=task_end,
                 )
             )
@@ -119,6 +138,28 @@ class PlannerService:
             unscheduled_tasks=unscheduled_tasks,
             timeline=timeline,
         )
+
+    def _choose_best_slot(
+        self,
+        available_slots: list[AvailableSlot],
+        task,
+    ) -> AvailableSlot:
+        """
+        Selects the best slot for a task.
+
+        Current strategy:
+        - First Fit
+
+        Future versions may evaluate:
+        - deadline proximity
+        - preferred hour
+        - task priority
+        - energy level
+        - focus blocks
+        - fragmentation
+        """
+
+        return available_slots[0]
 
     def _build_timeline(
         self,
@@ -184,43 +225,75 @@ class PlannerService:
 
         return timeline
 
-    def _find_available_time(
+    def _find_available_slots(
         self,
         current_time: datetime,
         task_duration: timedelta,
         busy_blocks: list[TimeBlock],
         break_minutes: int,
-    ) -> tuple[datetime, TimeBlock | None]:
-        last_collision_end: datetime | None = None
+        day_end: datetime,
+    ) -> list[AvailableSlot]:
+        available_slots: list[AvailableSlot] = []
+
+        slot_start = current_time
+        preceding_break: TimeBlock | None = None
 
         for block in busy_blocks:
-            task_end = current_time + task_duration
+            if block.end_time <= slot_start:
+                continue
 
-            has_collision = (
-                current_time < block.end_time
-                and task_end > block.start_time
+            has_free_time_before_block = (
+                slot_start < block.start_time
             )
 
-            if has_collision:
-                last_collision_end = block.end_time
+            if has_free_time_before_block:
+                slot_end = block.start_time
 
-                current_time = block.end_time + timedelta(
-                    minutes=break_minutes
+                task_fits = (
+                    slot_start + task_duration
+                    <= slot_end
                 )
 
-        collision_break = None
+                if task_fits:
+                    available_slots.append(
+                        AvailableSlot(
+                            start_time=slot_start,
+                            end_time=slot_end,
+                            preceding_break=preceding_break,
+                        )
+                    )
 
-        if (
-            last_collision_end is not None
-            and break_minutes > 0
-        ):
-            collision_break = TimeBlock(
-                start_time=last_collision_end,
-                end_time=last_collision_end + timedelta(
-                    minutes=break_minutes
-                ),
-                title="Descanso",
-                block_type=BlockType.BREAK,
+            if block.end_time >= day_end:
+                slot_start = day_end
+                preceding_break = None
+                break
+
+            slot_start = block.end_time + timedelta(
+                minutes=break_minutes
             )
 
-        return current_time, collision_break
+            if break_minutes > 0:
+                preceding_break = TimeBlock(
+                    start_time=block.end_time,
+                    end_time=slot_start,
+                    title="Descanso",
+                    block_type=BlockType.BREAK,
+                )
+            else:
+                preceding_break = None
+
+        task_fits_at_end = (
+            slot_start + task_duration
+            <= day_end
+        )
+
+        if task_fits_at_end:
+            available_slots.append(
+                AvailableSlot(
+                    start_time=slot_start,
+                    end_time=day_end,
+                    preceding_break=preceding_break,
+                )
+            )
+
+        return available_slots
