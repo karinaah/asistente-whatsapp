@@ -144,22 +144,40 @@ class PlannerService:
         available_slots: list[AvailableSlot],
         task,
     ) -> AvailableSlot:
+        earliest_start = min(
+            slot.start_time
+            for slot in available_slots
+        )
+
+        return max(
+            available_slots,
+            key=lambda slot: self._score_slot(
+                slot=slot,
+                task=task,
+                earliest_start=earliest_start,
+            ),
+        )
+
+    def _score_slot(
+        self,
+        slot: AvailableSlot,
+        task,
+        earliest_start: datetime,
+    ) -> float:
         """
-        Selects the best slot for a task.
+        Calculates the suitability score of an available slot.
 
         Current strategy:
-        - First Fit
+        - Prefer the earliest available slot.
 
-        Future versions may evaluate:
-        - deadline proximity
-        - preferred hour
-        - task priority
-        - energy level
-        - focus blocks
-        - fragmentation
+        Higher scores represent better scheduling options.
         """
 
-        return available_slots[0]
+        minutes_after_earliest = (
+            slot.start_time - earliest_start
+        ).total_seconds() / 60
+
+        return -minutes_after_earliest
 
     def _build_timeline(
         self,
