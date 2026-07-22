@@ -168,16 +168,36 @@ class PlannerService:
         Calculates the suitability score of an available slot.
 
         Current strategy:
-        - Prefer the earliest available slot.
+        - Prefer slots that closely match the task duration.
+        - Use the earliest slot as a tie-breaker.
 
         Higher scores represent better scheduling options.
         """
+
+        task_duration_minutes = task.estimated_minutes
+
+        slot_duration_minutes = (
+            slot.end_time - slot.start_time
+        ).total_seconds() / 60
+
+        remaining_minutes = (
+            slot_duration_minutes
+            - task_duration_minutes
+        )
 
         minutes_after_earliest = (
             slot.start_time - earliest_start
         ).total_seconds() / 60
 
-        return -minutes_after_earliest
+        fragmentation_score = -remaining_minutes
+        earliest_tie_breaker = (
+            -minutes_after_earliest / 10_000
+        )
+
+        return (
+            fragmentation_score
+            + earliest_tie_breaker
+        )
 
     def _build_timeline(
         self,
