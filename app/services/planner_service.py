@@ -18,6 +18,8 @@ class AvailableSlot:
 
 
 class PlannerService:
+    PREFERRED_TIME_BONUS = 150.0
+    EARLIEST_TIE_BREAKER_DIVISOR = 10_000    
     def __init__(self):
         self.task_sorter = TaskSorter()
 
@@ -164,40 +166,25 @@ class PlannerService:
         task,
         earliest_start: datetime,
     ) -> float:
-        """
-        Calculates the suitability score of an available slot.
+        score = 0.0
 
-        Current strategy:
-        - Prefer slots that closely match the task duration.
-        - Use the earliest slot as a tie-breaker.
-
-        Higher scores represent better scheduling options.
-        """
-
-        task_duration_minutes = task.estimated_minutes
-
-        slot_duration_minutes = (
-            slot.end_time - slot.start_time
-        ).total_seconds() / 60
-
-        remaining_minutes = (
-            slot_duration_minutes
-            - task_duration_minutes
+        score += self._score_fragmentation(
+            slot=slot,
+            task=task,
         )
 
-        minutes_after_earliest = (
-            slot.start_time - earliest_start
-        ).total_seconds() / 60
-
-        fragmentation_score = -remaining_minutes
-        earliest_tie_breaker = (
-            -minutes_after_earliest / 10_000
+        score += self._score_preferred_time_of_day(
+            slot=slot,
+            task=task,
         )
 
-        return (
-            fragmentation_score
-            + earliest_tie_breaker
+        score += self._score_earliest_start(
+            slot=slot,
+            earliest_start=earliest_start,
         )
+
+        return score
+    
 
     def _build_timeline(
         self,
@@ -335,3 +322,80 @@ class PlannerService:
             )
 
         return available_slots
+    
+    def _score_fragmentation(
+        self,
+        slot: AvailableSlot,
+        task,
+    ) -> float:
+        """
+        Prefer slots that leave the smallest
+        amount of unused time.
+        """
+
+        task_duration = task.estimated_minutes
+
+        slot_duration = (
+            slot.end_time - slot.start_time
+        ).total_seconds() / 60
+
+        remaining = slot_duration - task_duration
+
+        return -remaining    
+
+    def _score_preferred_time_of_day(
+        self,
+        slot: AvailableSlot,
+        task,
+    ) -> float:
+        preferred_time = task.preferred_time_of_day
+
+        if preferred_time is None:
+            return 0.0
+
+        if hasattr(preferred_time, "value"):
+            preferred_time = preferred_time.value
+
+        preferred_time = str(preferred_time).strip().lower()
+
+        slot_hour = slot.start_time.hour
+
+        preferred_ranges = {
+            "mañana": range(5, 12),
+            "tarde": range(12, 18),
+            "noche": range(18, 24),
+        }
+
+        preferred_hours = preferred_ranges.get(
+            preferred_time
+        )
+
+        if preferred_hours is None:
+            return 0.0
+
+        if slot_hour in preferred_hours:
+            return self.PREFERRED_TIME_BONUS
+
+        return 0.0
+
+
+    def _score_earliest_start(
+        self,
+        slot: AvailableSlot,
+        earliest_start: datetime,
+    ) -> float:
+        """
+        Tie-breaker.
+
+        If two slots have identical scores,
+        prefer the earliest one.
+        """
+
+        minutes_after = (
+            slot.start_time - earliest_start
+        ).total_seconds() / 60
+
+        return (
+            -minutes_after
+            / self.EARLIEST_TIE_BREAKER_DIVISOR
+        )        
