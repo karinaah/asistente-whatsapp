@@ -18,6 +18,11 @@ class AvailableSlot:
 
 
 class PlannerService:
+    FRAGMENTATION_WEIGHT = 1.0
+    PREFERRED_TIME_WEIGHT = 1.0
+    DEADLINE_WEIGHT = 1.0
+    EARLIEST_START_WEIGHT = 1.0
+    SAME_DAY_DEADLINE_EARLY_WEIGHT = 0.6  
     PREFERRED_TIME_BONUS = 150.0
     EARLIEST_TIE_BREAKER_DIVISOR = 10_000    
     def __init__(self):
@@ -168,23 +173,74 @@ class PlannerService:
     ) -> float:
         score = 0.0
 
-        score += self._score_fragmentation(
-            slot=slot,
-            task=task,
+        score += (
+            self.FRAGMENTATION_WEIGHT
+            * self._score_fragmentation(
+                slot=slot,
+                task=task,
+            )
         )
 
-        score += self._score_preferred_time_of_day(
-            slot=slot,
-            task=task,
+        score += (
+            self.PREFERRED_TIME_WEIGHT
+            * self._score_preferred_time_of_day(
+                slot=slot,
+                task=task,
+            )
         )
 
-        score += self._score_earliest_start(
-            slot=slot,
-            earliest_start=earliest_start,
+        score += (
+            self.DEADLINE_WEIGHT
+            * self._score_deadline(
+                slot=slot,
+                task=task,
+                earliest_start=earliest_start,
+            )
+        )
+
+        score += (
+            self.EARLIEST_START_WEIGHT
+            * self._score_earliest_start(
+                slot=slot,
+                earliest_start=earliest_start,
+            )
         )
 
         return score
+        
     
+    def _score_deadline(
+        self,
+        slot: AvailableSlot,
+        task,
+        earliest_start: datetime,
+    ) -> float:
+        """
+        Penalizes later slots when the task deadline
+        is on the planning day.
+        """
+
+        if task.deadline is None:
+            return 0.0
+
+        deadline = task.deadline
+
+        if hasattr(deadline, "date"):
+            deadline_date = deadline.date()
+        else:
+            deadline_date = deadline
+
+        if deadline_date != slot.start_time.date():
+            return 0.0
+
+        minutes_after_earliest = (
+            slot.start_time - earliest_start
+        ).total_seconds() / 60
+
+        return (
+            -minutes_after_earliest
+            * self.SAME_DAY_DEADLINE_EARLY_WEIGHT
+        )
 
     def _build_timeline(
         self,
