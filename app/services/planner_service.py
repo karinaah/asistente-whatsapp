@@ -148,9 +148,9 @@ class PlannerService:
 
     def _choose_best_slot(
         self,
-        available_slots: list[AvailableSlot],
+        available_slots,
         task,
-    ) -> AvailableSlot:
+    ):
         earliest_start = min(
             slot.start_time
             for slot in available_slots
@@ -162,6 +162,7 @@ class PlannerService:
                 slot=slot,
                 task=task,
                 earliest_start=earliest_start,
+                available_slots=available_slots,
             ),
         )
 
@@ -170,6 +171,7 @@ class PlannerService:
         slot: AvailableSlot,
         task,
         earliest_start: datetime,
+        available_slots,
     ) -> float:
         score = 0.0
 
@@ -178,6 +180,7 @@ class PlannerService:
             * self._score_fragmentation(
                 slot=slot,
                 task=task,
+                available_slots=available_slots,
             )
         )
 
@@ -383,21 +386,49 @@ class PlannerService:
         self,
         slot: AvailableSlot,
         task,
+        available_slots,
     ) -> float:
         """
-        Prefer slots that leave the smallest
-        amount of unused time.
+        Normalized fragmentation score.
+
+        Returns:
+        - 0.0 for the slot with the smallest unused remainder.
+        - -1.0 for the slot with the largest unused remainder.
+        - A proportional value between both extremes.
         """
 
-        task_duration = task.estimated_minutes
+        def remaining_minutes(candidate: AvailableSlot) -> float:
+            slot_duration = (
+                candidate.end_time
+                - candidate.start_time
+            ).total_seconds() / 60
 
-        slot_duration = (
-            slot.end_time - slot.start_time
-        ).total_seconds() / 60
+            return (
+                slot_duration
+                - task.estimated_minutes
+            )
 
-        remaining = slot_duration - task_duration
+        remainders = [
+            remaining_minutes(candidate)
+            for candidate in available_slots
+        ]
 
-        return -remaining    
+        current_remainder = remaining_minutes(slot)
+        minimum_remainder = min(remainders)
+        maximum_remainder = max(remainders)
+
+        if maximum_remainder == minimum_remainder:
+            return 0.0
+
+        normalized = (
+            current_remainder
+            - minimum_remainder
+        ) / (
+            maximum_remainder
+            - minimum_remainder
+        )
+
+        return -normalized   
 
     def _score_preferred_time_of_day(
         self,
