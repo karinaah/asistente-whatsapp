@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from app.models.score_breakdown import ScoreBreakdown
 
 class ScoringEngine:
     FRAGMENTATION_WEIGHT = 1.0
@@ -17,43 +17,14 @@ class ScoringEngine:
         earliest_start,
         available_slots,
     ) -> float:
-        score = 0.0
-
-        score += (
-            self.FRAGMENTATION_WEIGHT
-            * self._score_fragmentation(
-                slot=slot,
-                task=task,
-                available_slots=available_slots,
-            )
+        breakdown = self.calculate_breakdown(
+            slot=slot,
+            task=task,
+            earliest_start=earliest_start,
+            available_slots=available_slots,
         )
 
-        score += (
-            self.PREFERRED_TIME_WEIGHT
-            * self._score_preferred_time_of_day(
-                slot=slot,
-                task=task,
-            )
-        )
-
-        score += (
-            self.DEADLINE_WEIGHT
-            * self._score_deadline(
-                slot=slot,
-                task=task,
-                earliest_start=earliest_start,
-            )
-        )
-
-        score += (
-            self.EARLIEST_START_WEIGHT
-            * self._score_earliest_start(
-                slot=slot,
-                earliest_start=earliest_start,
-            )
-        )
-
-        return score
+        return breakdown.total
 
     def _score_fragmentation(
         self,
@@ -178,4 +149,32 @@ class ScoringEngine:
         return (
             -minutes_after_earliest
             * self.SAME_DAY_DEADLINE_EARLY_WEIGHT
+        )
+    
+    def calculate_breakdown(
+        self,
+        slot,
+        task,
+        earliest_start,
+        available_slots,
+    ) -> ScoreBreakdown:
+        return ScoreBreakdown(
+            fragmentation=self._score_fragmentation(
+                slot=slot,
+                task=task,
+                available_slots=available_slots,
+            ),
+            preferred_time=self._score_preferred_time_of_day(
+                slot=slot,
+                task=task,
+            ),
+            deadline=self._score_deadline(
+                slot=slot,
+                task=task,
+                earliest_start=earliest_start,
+            ),
+            earliest_start=self._score_earliest_start(
+                slot=slot,
+                earliest_start=earliest_start,
+            ),
         )
