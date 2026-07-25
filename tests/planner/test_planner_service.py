@@ -5,7 +5,7 @@ from app.models.time_block import BlockType
 from app.services.planner_service import PlannerService
 from tests.factories.task_factory import make_task
 from tests.factories.time_block_factory import make_time_block
-
+from app.models.task import TaskContext
 
 def test_single_task_is_scheduled_at_day_start():
     planner = PlannerService()
@@ -322,3 +322,137 @@ def test_timeline_contains_busy_block_break_and_task_in_order():
     assert task_block.title == "Estudiar IA"
     assert task_block.start_time.hour == 9
     assert task_block.start_time.minute == 15    
+
+def test_task_is_scheduled_in_first_available_slot_between_busy_blocks():
+    planner = PlannerService()
+
+    first_busy_block = make_time_block(
+        start="08:00",
+        end="09:00",
+        title="Reunión de equipo",
+        block_type=BlockType.EVENT,
+    )
+
+    second_busy_block = make_time_block(
+        start="10:30",
+        end="11:30",
+        title="Llamada con cliente",
+        block_type=BlockType.EVENT,
+    )
+
+    request = PlanningRequest(
+        tasks=[
+            make_task(
+                title="Preparar informe",
+                estimated_minutes=60,
+            )
+        ],
+        plan_date=date(2025, 7, 20),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=15,
+        busy_blocks=[
+            first_busy_block,
+            second_busy_block,
+        ],
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 1
+    assert len(response.unscheduled_tasks) == 0
+
+    scheduled = response.scheduled_tasks[0]
+
+    assert scheduled.start_time.hour == 9
+    assert scheduled.start_time.minute == 15
+    assert scheduled.end_time.hour == 10
+    assert scheduled.end_time.minute == 15    
+
+def test_plan_filters_tasks_by_work_context():
+    planner = PlannerService()
+
+    request = PlanningRequest(
+        tasks=[
+            make_task(
+                title="Preparar informe",
+                context=TaskContext.work,
+                priority="alta",
+            ),
+            make_task(
+                title="Comprar comida",
+                context=TaskContext.personal,
+                priority="alta",
+            ),
+        ],
+        plan_date=date(2025, 7, 20),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=15,
+        busy_blocks=[],
+        context=TaskContext.work,
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 1
+    assert response.scheduled_tasks[0].task.title == "Preparar informe"  
+
+def test_plan_filters_tasks_by_personal_context():
+    planner = PlannerService()
+
+    request = PlanningRequest(
+        tasks=[
+            make_task(
+                title="Preparar informe",
+                context=TaskContext.work,
+                priority="alta",
+            ),
+            make_task(
+                title="Comprar comida",
+                context=TaskContext.personal,
+                priority="alta",
+            ),
+        ],
+        plan_date=date(2025, 7, 20),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=15,
+        busy_blocks=[],
+        context=TaskContext.personal,
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 1
+    assert response.scheduled_tasks[0].task.title == "Comprar comida"      
+
+def test_plan_includes_all_tasks_when_context_is_not_provided():
+    planner = PlannerService()
+
+    request = PlanningRequest(
+        tasks=[
+            make_task(
+                title="Preparar informe",
+                context=TaskContext.work,
+                priority="alta",
+            ),
+            make_task(
+                title="Comprar comida",
+                context=TaskContext.personal,
+                priority="media",
+            ),
+        ],
+        plan_date=date(2025, 7, 20),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=15,
+        busy_blocks=[],
+        context=None,
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 2
+    assert response.scheduled_tasks[0].task.title == "Preparar informe"
+    assert response.scheduled_tasks[1].task.title == "Comprar comida"    

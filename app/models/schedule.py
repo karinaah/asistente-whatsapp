@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.task import Task
+from app.models.task import Task, TaskContext
 from app.models.time_block import TimeBlock
 
 class ScheduledTask(BaseModel):
@@ -17,7 +17,8 @@ class PlanningRequest(BaseModel):
     day_start_hour: int = Field(default=8, ge=0, le=23)
     day_end_hour: int = Field(default=20, ge=1, le=24)
     break_minutes: int = Field(default=15, ge=0, le=120)
-    busy_blocks: list[TimeBlock] = []
+    busy_blocks: list[TimeBlock] = Field(default_factory=list)
+    context: TaskContext | None = None
 
 class PlanningResponse(BaseModel):
     scheduled_tasks: list[ScheduledTask]

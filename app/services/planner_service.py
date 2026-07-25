@@ -34,7 +34,17 @@ class PlannerService:
             time(hour=request.day_start_hour),
         )
 
-        ordered_tasks = self.task_sorter.sort(request.tasks)
+
+        tasks_to_plan = request.tasks
+
+        if request.context is not None:
+            tasks_to_plan = [
+                task
+                for task in request.tasks
+                if task.context == request.context
+            ]
+
+        ordered_tasks = self.task_sorter.sort(tasks_to_plan)        
 
         for block in request.busy_blocks:
             block.start_time = block.start_time.replace(

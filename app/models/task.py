@@ -24,6 +24,10 @@ class TaskCategory(str, Enum):
     errands = "tramites"
     other = "otro"
 
+class TaskContext(str, Enum):
+    work = "trabajo"
+    personal = "personal"
+
 class PreferredTimeOfDay(str, Enum):
     morning = "mañana"
     afternoon = "tarde"
@@ -38,6 +42,7 @@ class Task(BaseModel):
     estimated_minutes: int = Field(gt=0, le=1440)
     priority: TaskPriority = TaskPriority.medium
     category: TaskCategory = TaskCategory.other
+    context: TaskContext = TaskContext.personal 
     status: TaskStatus = TaskStatus.pending
     deadline: datetime | None = None
     preferred_date: date | None = None
@@ -63,6 +68,7 @@ class TaskUpdate(BaseModel):
     estimated_minutes: int | None = Field(default=None, gt=0, le=1440)
     priority: TaskPriority | None = None
     category: TaskCategory | None = None
+    context: TaskContext | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
     preferred_date: date | None = None
