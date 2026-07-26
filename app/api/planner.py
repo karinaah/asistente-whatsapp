@@ -27,7 +27,7 @@ def create_plan_from_db(
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ) -> PlanningResponse:
-    tasks = task_service.get_all(db)
+    tasks = task_service.get_plannable(db)
 
     planning_request = PlanningRequest(
         tasks=tasks,

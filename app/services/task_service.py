@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
-
-from app.models.task import Task, TaskUpdate
+from app.models.task import Task, TaskStatus, TaskUpdate
 from app.models.task_db import TaskDB
 from app.repositories.task_repository import TaskRepository
 from app.exceptions.task_exceptions import TaskNotFoundError
@@ -111,3 +110,15 @@ class TaskService:
             db=db,
             task=task,
         )    
+    
+    def get_plannable(self, db: Session) -> list[Task]:
+        tasks = self.get_all(db)
+
+        return [
+            task
+            for task in tasks
+            if task.status in {
+                TaskStatus.pending,
+                TaskStatus.in_progress,
+            }
+        ]    
