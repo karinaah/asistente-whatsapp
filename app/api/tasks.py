@@ -84,3 +84,14 @@ def update_task(
         task_id=task_id,
         request=request,
     )
+
+@router.post("/", response_model=Task, status_code=201)
+def create_task(
+    task: Task,
+    db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
+):
+    return task_service.create(
+        db=db,
+        task=task,
+    )
