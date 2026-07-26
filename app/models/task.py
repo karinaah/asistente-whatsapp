@@ -75,3 +75,9 @@ class TaskUpdate(BaseModel):
     preferred_time_of_day: PreferredTimeOfDay | None = None
     preferred_start_time: time | None = None
     location: str | None = None
+
+class TaskStatus(str, Enum):
+    pending = "pendiente"
+    in_progress = "en_progreso"
+    completed = "completada"
+    cancelled = "cancelada"    

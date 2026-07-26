@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.task import Task
 from app.models.task_db import TaskDB
+from app.models.task import TaskStatus
 
 class TaskRepository:
     def save(self, db: Session, task: Task) -> TaskDB:
@@ -12,6 +13,7 @@ class TaskRepository:
             estimated_minutes=task.estimated_minutes,
             priority=task.priority.value,
             category=task.category.value,
+            context=task.context.value,
             status=task.status.value,
             deadline=task.deadline,
             preferred_date=task.preferred_date,
@@ -58,7 +60,7 @@ class TaskRepository:
         if task_db is None:
             return None
 
-        task_db.status = "completada"
+        task_db.status = TaskStatus.completed.value
 
         db.commit()
         db.refresh(task_db)
@@ -93,6 +95,7 @@ class TaskRepository:
         estimated_minutes: int | None = None,
         priority: str | None = None,
         category: str | None = None,
+        context: str | None = None,
         status: str | None = None,
         deadline=None,
         preferred_date: date | None = None,
@@ -123,6 +126,9 @@ class TaskRepository:
 
         if category is not None:
             task_db.category = category
+
+        if context is not None:
+            task_db.context = context
 
         if status is not None:
             task_db.status = status

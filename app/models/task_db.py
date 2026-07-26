@@ -39,6 +39,11 @@ class TaskDB(Base):
         nullable=False,
     )
 
+    context: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
