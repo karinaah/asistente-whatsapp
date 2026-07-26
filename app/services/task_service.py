@@ -19,8 +19,13 @@ class TaskService:
             task=task,
         )
 
-    def get_all(self, db: Session) -> list[TaskDB]:
-        return self.task_repository.get_all(db)
+    def get_all(self, db: Session) -> list[Task]:
+        tasks_db = self.task_repository.get_all(db)
+
+        return [
+            Task.model_validate(task_db)
+            for task_db in tasks_db
+        ]
 
     def get_by_id(
         self,
