@@ -128,3 +128,64 @@ Estas capacidades no deben retrasar la primera versión:
 - simulación avanzada;
 - modelo predictivo;
 - inteligencia conversacional completa.
+
+
+
+
+# Roadmap
+
+## Sprint 1 ✅ Finalizado
+
+### Objetivos
+
+- Extracción de tareas mediante IA.
+- Modelado del dominio.
+- Parser temporal.
+- API inicial.
+
+### Estado
+
+Completado.
+
+## Sprint 2 ✅ Finalizado
+
+### Objetivos
+
+- Diseño del Planner.
+- Algoritmo de planificación.
+- Timeline.
+- Bloques ocupados.
+- Descansos.
+- Preferencias horarias.
+- Sistema de scoring.
+
+### Estado
+
+Completado.
+
+## Sprint 3 ✅ Finalizado
+
+### Objetivos
+
+- Persistencia con SQLite.
+- Integración con SQLAlchemy.
+- Repository Pattern.
+- CRUD completo de tareas.
+- Integración Planner + Base de datos.
+- Separación entre dominio y persistencia.
+- Filtrado de tareas planificables.
+- Validación funcional del planner.
+
+### Resultado
+
+AURA puede:
+
+- Crear tareas.
+- Persistirlas.
+- Editarlas.
+- Completarlas.
+- Consultarlas.
+- Recuperarlas desde la base de datos.
+- Generar un plan automáticamente usando únicamente tareas pendientes.
+
+

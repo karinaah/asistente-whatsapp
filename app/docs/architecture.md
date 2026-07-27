@@ -86,3 +86,22 @@ Repository Interface
 SQLAlchemy Repository
    ↓
 Database
+
+## Planner integrado con persistencia
+
+El planner puede generar planes usando tareas almacenadas en la base de datos.
+
+Flujo:
+
+```text
+SQLite
+   ↓
+TaskRepository
+   ↓
+TaskService
+   ↓
+Task
+   ↓
+PlanningRequest
+   ↓
+PlannerService
