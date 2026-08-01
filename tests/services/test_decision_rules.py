@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from app.models.schedule import ScheduledTask
-from app.services.decision_rules.priority_rule import PriorityRule
-from tests.factories.task_factory import make_task
+from app.models.recommendation import DecisionContext
+from app.models.schedule import PlanningResponse, ScheduledTask
 from app.services.decision_rules.deadline_rule import DeadlineRule
 from app.services.decision_rules.preferred_time_rule import (
     PreferredTimeRule,
 )
-
+from app.services.decision_rules.priority_rule import PriorityRule
+from tests.factories.task_factory import make_task
 
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
@@ -28,7 +28,20 @@ def test_priority_rule_returns_reason_for_high_priority_task():
         ),
     )
 
-    reasons = rule.evaluate(scheduled_task)
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=scheduled_task.start_time,
+        plan=plan,
+    )    
+
+    reasons = rule.evaluate(
+    scheduled_task,
+    context,)
 
     assert len(reasons) == 1
     assert reasons[0].code.value == "high_priority"
@@ -59,7 +72,20 @@ def test_deadline_rule_returns_reason_when_task_deadline_is_today():
         ),
     )
 
-    reasons = rule.evaluate(scheduled_task)
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=scheduled_task.start_time,
+        plan=plan,
+    )
+
+    reasons = rule.evaluate(
+    scheduled_task,
+    context,)
 
     assert len(reasons) == 1
     assert reasons[0].code.value == "deadline_soon"
@@ -85,7 +111,20 @@ def test_preferred_time_rule_returns_reason_when_slot_matches_preference():
         ),
     )
 
-    reasons = rule.evaluate(scheduled_task)
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=scheduled_task.start_time,
+        plan=plan,
+    )
+
+    reasons = rule.evaluate(
+    scheduled_task,
+    context,)
 
     assert len(reasons) == 1
     assert reasons[0].code.value == "preferred_time_match"

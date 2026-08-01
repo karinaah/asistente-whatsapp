@@ -1,4 +1,5 @@
 from app.models.recommendation import (
+    DecisionContext,
     RecommendationReason,
     RecommendationReasonCode,
 )
@@ -11,6 +12,7 @@ class PriorityRule(DecisionRule):
     def evaluate(
         self,
         scheduled_task: ScheduledTask,
+        context: DecisionContext,
     ) -> list[RecommendationReason]:
 
         if scheduled_task.task.priority.value != "alta":

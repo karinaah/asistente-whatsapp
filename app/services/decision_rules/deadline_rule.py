@@ -1,4 +1,5 @@
 from app.models.recommendation import (
+    DecisionContext,
     RecommendationReason,
     RecommendationReasonCode,
 )
@@ -11,8 +12,8 @@ class DeadlineRule(DecisionRule):
     def evaluate(
         self,
         scheduled_task: ScheduledTask,
+        context: DecisionContext,
     ) -> list[RecommendationReason]:
-
         deadline = scheduled_task.task.deadline
 
         if deadline is None:

@@ -5,11 +5,12 @@ from app.models.recommendation import (
     RecommendationReasonCode,
 )
 from app.services.decision_rules.deadline_rule import DeadlineRule
-from app.services.decision_rules.priority_rule import PriorityRule
-from app.services.decision_scoring import DecisionRuleWeights
 from app.services.decision_rules.preferred_time_rule import (
     PreferredTimeRule,
 )
+from app.services.decision_rules.priority_rule import PriorityRule
+from app.services.decision_scoring import DecisionRuleWeights
+
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -17,8 +18,8 @@ class DecisionEngine:
             PriorityRule(),
             DeadlineRule(),
             PreferredTimeRule(),
-        ]        
-        
+        ]
+
     def recommend(
         self,
         context: DecisionContext,
@@ -40,23 +41,14 @@ class DecisionEngine:
         )
 
         if active_task is not None:
-            reasons = self._build_reasons(
+            return self._build_recommendation(
                 scheduled_task=active_task,
                 base_score=DecisionRuleWeights.ACTIVE_TASK,
                 message=(
                     "Esta tarea está programada "
                     "para realizarse ahora."
                 ),
-            )
-
-            return Recommendation(
-                task=active_task.task,
-                scheduled_task=active_task,
-                score=sum(
-                    reason.score
-                    for reason in reasons
-                ),
-                reasons=reasons,
+                context=context,
             )
 
         upcoming_tasks = [
@@ -73,23 +65,14 @@ class DecisionEngine:
             key=lambda scheduled: scheduled.start_time,
         )
 
-        reasons = self._build_reasons(
+        return self._build_recommendation(
             scheduled_task=next_task,
             base_score=DecisionRuleWeights.UPCOMING_TASK,
             message=(
                 "Esta es la próxima tarea "
                 "programada en tu agenda."
             ),
-        )
-
-        return Recommendation(
-            task=next_task.task,
-            scheduled_task=next_task,
-            score=sum(
-                reason.score
-                for reason in reasons
-            ),
-            reasons=reasons,
+            context=context,
         )
 
     def _build_reasons(
@@ -97,6 +80,7 @@ class DecisionEngine:
         scheduled_task,
         base_score: float,
         message: str,
+        context: DecisionContext,
     ) -> list[RecommendationReason]:
         reasons = [
             RecommendationReason(
@@ -108,7 +92,34 @@ class DecisionEngine:
 
         for rule in self.rules:
             reasons.extend(
-                rule.evaluate(scheduled_task)
+                rule.evaluate(
+                    scheduled_task,
+                    context,
+                )
             )
 
         return reasons
+
+    def _build_recommendation(
+        self,
+        scheduled_task,
+        base_score: float,
+        message: str,
+        context: DecisionContext,
+    ) -> Recommendation:
+        reasons = self._build_reasons(
+            scheduled_task=scheduled_task,
+            base_score=base_score,
+            message=message,
+            context=context,
+        )
+
+        return Recommendation(
+            task=scheduled_task.task,
+            scheduled_task=scheduled_task,
+            score=sum(
+                reason.score
+                for reason in reasons
+            ),
+            reasons=reasons,
+        )

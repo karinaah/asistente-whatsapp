@@ -1,4 +1,5 @@
 from app.models.recommendation import (
+    DecisionContext,
     RecommendationReason,
     RecommendationReasonCode,
 )
@@ -12,7 +13,8 @@ class PreferredTimeRule(DecisionRule):
     def evaluate(
         self,
         scheduled_task: ScheduledTask,
-    ) -> list[RecommendationReason]:
+        context: DecisionContext,
+    ) -> list[RecommendationReason]:        
         preferred_time = (
             scheduled_task.task.preferred_time_of_day
         )

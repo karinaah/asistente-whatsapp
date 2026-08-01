@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
-from app.models.recommendation import RecommendationReason
+from app.models.recommendation import (
+    DecisionContext,
+    RecommendationReason,
+)
 from app.models.schedule import ScheduledTask
 
 
@@ -9,6 +12,6 @@ class DecisionRule(ABC):
     def evaluate(
         self,
         scheduled_task: ScheduledTask,
+        context: DecisionContext,
     ) -> list[RecommendationReason]:
-        """Evalúa una tarea programada y devuelve las razones aplicables."""
         raise NotImplementedError
