@@ -339,4 +339,51 @@ def test_active_task_matching_preferred_time_adds_preferred_time_reason():
     assert (
         RecommendationReasonCode.preferred_time_match
         in reason_codes
-    )    
+    )
+
+def test_active_task_that_fits_available_time_adds_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Revisar correos",
+        estimated_minutes=30,
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T10:30:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-01T10:10:00"
+        ),
+        plan=plan,
+        available_minutes=45,
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 125.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert (
+        RecommendationReasonCode.fits_available_time
+        in reason_codes
+    )        

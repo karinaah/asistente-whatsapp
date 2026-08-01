@@ -4,3 +4,4 @@ class DecisionRuleWeights:
     HIGH_PRIORITY = 30.0
     DEADLINE_TODAY = 40.0
     PREFERRED_TIME_MATCH = 20.0
+    FITS_AVAILABLE_TIME = 25.0

@@ -8,6 +8,9 @@ from app.services.decision_rules.preferred_time_rule import (
 )
 from app.services.decision_rules.priority_rule import PriorityRule
 from tests.factories.task_factory import make_task
+from app.services.decision_rules.available_time_rule import (
+    AvailableTimeRule,
+)
 
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
@@ -130,3 +133,45 @@ def test_preferred_time_rule_returns_reason_when_slot_matches_preference():
     assert reasons[0].code.value == "preferred_time_match"
     assert reasons[0].score == 20.0
     assert "horario preferido" in reasons[0].message.lower()    
+
+def test_available_time_rule_returns_reason_when_task_fits():
+    rule = AvailableTimeRule()
+
+    task = make_task(
+        title="Revisar correos",
+        estimated_minutes=30,
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T10:30:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-01T09:50:00"
+        ),
+        plan=plan,
+        available_minutes=45,
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "fits_available_time"
+    assert reasons[0].score == 25.0
+    assert "tiempo" in reasons[0].message.lower()    

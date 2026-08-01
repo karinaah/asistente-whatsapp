@@ -10,7 +10,9 @@ from app.services.decision_rules.preferred_time_rule import (
 )
 from app.services.decision_rules.priority_rule import PriorityRule
 from app.services.decision_scoring import DecisionRuleWeights
-
+from app.services.decision_rules.available_time_rule import (
+    AvailableTimeRule,
+)
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -18,6 +20,7 @@ class DecisionEngine:
             PriorityRule(),
             DeadlineRule(),
             PreferredTimeRule(),
+            AvailableTimeRule(),
         ]
 
     def recommend(
