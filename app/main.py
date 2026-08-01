@@ -10,6 +10,7 @@ from app.config.logging_config import configure_logging
 from app.config.settings import settings
 from app.models.task_db import TaskDB
 from app.handlers.exception_handlers import register_exception_handlers
+from app.api.decision import router as decision_router
 
 configure_logging()
 
@@ -46,3 +47,4 @@ def home() -> dict[str, str]:
 app.include_router(tasks_router)
 app.include_router(planner_router)
 app.include_router(assistant_router)
+app.include_router(decision_router)
