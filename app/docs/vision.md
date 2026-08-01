@@ -6,6 +6,8 @@ AURA existe para ayudar a las personas a tomar mejores decisiones sobre su tiemp
 
 No busca ser únicamente un gestor de tareas ni un calendario inteligente. Su objetivo es reducir la carga mental de decidir constantemente qué hacer, qué posponer, qué aceptar y qué proteger.
 
+AURA ayuda a las personas a tomar mejores decisiones sobre su tiempo. No solo organiza una agenda, sino que entiende prioridades, contexto y objetivos para recomendar la mejor acción en cada momento.
+
 ## Problema que resuelve
 
 Las herramientas de productividad actuales ayudan a registrar tareas y organizar calendarios, pero la mayoría sigue dejando la decisión final completamente en manos del usuario.

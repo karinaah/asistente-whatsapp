@@ -4,9 +4,21 @@ from app.models.recommendation import (
     RecommendationReason,
     RecommendationReasonCode,
 )
-
+from app.services.decision_rules.deadline_rule import DeadlineRule
+from app.services.decision_rules.priority_rule import PriorityRule
+from app.services.decision_scoring import DecisionRuleWeights
+from app.services.decision_rules.preferred_time_rule import (
+    PreferredTimeRule,
+)
 
 class DecisionEngine:
+    def __init__(self) -> None:
+        self.rules = [
+            PriorityRule(),
+            DeadlineRule(),
+            PreferredTimeRule(),
+        ]        
+        
     def recommend(
         self,
         context: DecisionContext,
@@ -30,7 +42,7 @@ class DecisionEngine:
         if active_task is not None:
             reasons = self._build_reasons(
                 scheduled_task=active_task,
-                base_score=100.0,
+                base_score=DecisionRuleWeights.ACTIVE_TASK,
                 message=(
                     "Esta tarea está programada "
                     "para realizarse ahora."
@@ -63,7 +75,7 @@ class DecisionEngine:
 
         reasons = self._build_reasons(
             scheduled_task=next_task,
-            base_score=50.0,
+            base_score=DecisionRuleWeights.UPCOMING_TASK,
             message=(
                 "Esta es la próxima tarea "
                 "programada en tu agenda."
@@ -94,28 +106,9 @@ class DecisionEngine:
             )
         ]
 
-        if scheduled_task.task.priority.value == "alta":
-            reasons.append(
-                RecommendationReason(
-                    code=RecommendationReasonCode.high_priority,
-                    message="La tarea tiene prioridad alta.",
-                    score=30.0,
-                )
-            )
-
-        deadline = scheduled_task.task.deadline
-
-        if (
-            deadline is not None
-            and deadline.date()
-            == scheduled_task.start_time.date()
-        ):
-            reasons.append(
-                RecommendationReason(
-                    code=RecommendationReasonCode.deadline_soon,
-                    message="La tarea vence hoy.",
-                    score=40.0,
-                )
+        for rule in self.rules:
+            reasons.extend(
+                rule.evaluate(scheduled_task)
             )
 
         return reasons

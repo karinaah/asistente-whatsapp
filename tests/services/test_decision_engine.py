@@ -293,3 +293,50 @@ def test_active_task_with_deadline_today_adds_deadline_reason():
     }
 
     assert RecommendationReasonCode.deadline_soon in reason_codes
+
+def test_active_task_matching_preferred_time_adds_preferred_time_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Entrenamiento",
+        estimated_minutes=60,
+        preferred_time_of_day="noche",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T18:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T19:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-01T18:30:00"
+        ),
+        plan=plan,
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 120.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert (
+        RecommendationReasonCode.preferred_time_match
+        in reason_codes
+    )    

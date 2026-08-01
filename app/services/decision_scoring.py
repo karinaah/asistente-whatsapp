@@ -1,0 +1,6 @@
+class DecisionRuleWeights:
+    ACTIVE_TASK = 100.0
+    UPCOMING_TASK = 50.0
+    HIGH_PRIORITY = 30.0
+    DEADLINE_TODAY = 40.0
+    PREFERRED_TIME_MATCH = 20.0

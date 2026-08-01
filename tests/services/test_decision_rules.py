@@ -1,0 +1,93 @@
+from datetime import datetime
+
+from app.models.schedule import ScheduledTask
+from app.services.decision_rules.priority_rule import PriorityRule
+from tests.factories.task_factory import make_task
+from app.services.decision_rules.deadline_rule import DeadlineRule
+from app.services.decision_rules.preferred_time_rule import (
+    PreferredTimeRule,
+)
+
+
+def test_priority_rule_returns_reason_for_high_priority_task():
+    rule = PriorityRule()
+
+    task = make_task(
+        title="Preparar propuesta",
+        estimated_minutes=60,
+        priority="alta",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T11:00:00"
+        ),
+    )
+
+    reasons = rule.evaluate(scheduled_task)
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "high_priority"
+    assert reasons[0].score == 30.0
+    assert "prioridad alta" in reasons[0].message.lower()
+
+
+
+
+def test_deadline_rule_returns_reason_when_task_deadline_is_today():
+    rule = DeadlineRule()
+
+    task = make_task(
+        title="Enviar propuesta",
+        estimated_minutes=60,
+        deadline=datetime.fromisoformat(
+            "2026-08-01T18:00:00"
+        ),
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T11:00:00"
+        ),
+    )
+
+    reasons = rule.evaluate(scheduled_task)
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "deadline_soon"
+    assert reasons[0].score == 40.0
+    assert "vence hoy" in reasons[0].message.lower()    
+
+def test_preferred_time_rule_returns_reason_when_slot_matches_preference():
+    rule = PreferredTimeRule()
+
+    task = make_task(
+        title="Entrenamiento",
+        estimated_minutes=60,
+        preferred_time_of_day="noche",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T18:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T19:00:00"
+        ),
+    )
+
+    reasons = rule.evaluate(scheduled_task)
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "preferred_time_match"
+    assert reasons[0].score == 20.0
+    assert "horario preferido" in reasons[0].message.lower()    
