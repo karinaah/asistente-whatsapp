@@ -12,6 +12,7 @@ from app.services.decision_rules.available_time_rule import (
     AvailableTimeRule,
 )
 from app.services.decision_rules.context_rule import ContextRule
+from app.services.decision_rules.overdue_rule import OverdueRule
 
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
@@ -219,3 +220,47 @@ def test_context_rule_returns_reason_when_task_matches_active_context():
     assert reasons[0].code.value == "context_match"
     assert reasons[0].score == 35.0
     assert "contexto" in reasons[0].message.lower()    
+
+def test_overdue_rule_returns_reason_when_task_is_overdue():
+    rule = OverdueRule()
+
+    task = make_task(
+        title="Enviar informe",
+        estimated_minutes=60,
+        deadline=datetime.fromisoformat(
+            "2026-08-01T18:00:00"
+        ),
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-02T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-02T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-02T10:15:00"
+        ),
+        plan=plan,
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "overdue"
+    assert reasons[0].score == 60.0
+    assert "vencida" in reasons[0].message.lower()    

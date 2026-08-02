@@ -432,3 +432,49 @@ def test_active_task_matching_context_adds_context_reason():
     }
 
     assert RecommendationReasonCode.context_match in reason_codes    
+
+def test_active_task_with_overdue_deadline_adds_overdue_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Enviar informe",
+        estimated_minutes=60,
+        deadline=datetime.fromisoformat(
+            "2026-08-01T18:00:00"
+        ),
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-02T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-02T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-02T10:15:00"
+        ),
+        plan=plan,
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 160.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert RecommendationReasonCode.overdue in reason_codes    

@@ -14,6 +14,7 @@ from app.services.decision_rules.available_time_rule import (
     AvailableTimeRule,
 )
 from app.services.decision_rules.context_rule import ContextRule
+from app.services.decision_rules.overdue_rule import OverdueRule
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -23,6 +24,7 @@ class DecisionEngine:
             PreferredTimeRule(),
             AvailableTimeRule(),
             ContextRule(),
+            OverdueRule(),
         ]
 
     def recommend(
