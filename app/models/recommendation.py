@@ -15,7 +15,7 @@ class RecommendationReasonCode(str, Enum):
     fits_available_time = "fits_available_time"
     preferred_time_match = "preferred_time_match"
     earliest_available = "earliest_available"
-
+    context_match = "context_match"
 
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode

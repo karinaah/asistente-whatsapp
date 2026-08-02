@@ -11,6 +11,7 @@ from tests.factories.task_factory import make_task
 from app.services.decision_rules.available_time_rule import (
     AvailableTimeRule,
 )
+from app.services.decision_rules.context_rule import ContextRule
 
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
@@ -175,3 +176,46 @@ def test_available_time_rule_returns_reason_when_task_fits():
     assert reasons[0].code.value == "fits_available_time"
     assert reasons[0].score == 25.0
     assert "tiempo" in reasons[0].message.lower()    
+
+def test_context_rule_returns_reason_when_task_matches_active_context():
+    rule = ContextRule()
+
+    task = make_task(
+        title="Preparar informe",
+        estimated_minutes=60,
+        context="trabajo",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-02T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-02T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-02T10:15:00"
+        ),
+        plan=plan,
+        context="trabajo",
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].code.value == "context_match"
+    assert reasons[0].score == 35.0
+    assert "contexto" in reasons[0].message.lower()    

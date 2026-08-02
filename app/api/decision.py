@@ -52,10 +52,12 @@ def recommend_next_action(
         planning_request
     )
 
+
     decision_context = DecisionContext(
         current_time=datetime.now(),
         plan=plan,
         context=request.context,
+        available_minutes=request.available_minutes,
     )
 
     return decision_engine.recommend(

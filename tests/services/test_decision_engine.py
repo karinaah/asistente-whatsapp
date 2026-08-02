@@ -387,3 +387,48 @@ def test_active_task_that_fits_available_time_adds_reason():
         RecommendationReasonCode.fits_available_time
         in reason_codes
     )        
+
+def test_active_task_matching_context_adds_context_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar informe",
+        estimated_minutes=60,
+        context="trabajo",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-02T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-02T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-02T10:15:00"
+        ),
+        plan=plan,
+        context="trabajo",
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 135.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert RecommendationReasonCode.context_match in reason_codes    

@@ -32,3 +32,7 @@ class PlanningFromDBRequest(BaseModel):
     break_minutes: int = Field(default=15, ge=0, le=120)
     busy_blocks: list[TimeBlock] = Field(default_factory=list)
     context: TaskContext | None = None
+    available_minutes: int | None = Field(
+        default=None,
+        ge=0,
+    )

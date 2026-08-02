@@ -13,6 +13,7 @@ from app.services.decision_scoring import DecisionRuleWeights
 from app.services.decision_rules.available_time_rule import (
     AvailableTimeRule,
 )
+from app.services.decision_rules.context_rule import ContextRule
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -21,6 +22,7 @@ class DecisionEngine:
             DeadlineRule(),
             PreferredTimeRule(),
             AvailableTimeRule(),
+            ContextRule(),
         ]
 
     def recommend(
