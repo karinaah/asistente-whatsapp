@@ -9,7 +9,13 @@ from app.models.schedule import PlanningResponse, ScheduledTask
 from app.services.decision_engine import DecisionEngine
 from tests.factories.task_factory import make_task
 
-from app.models.human_state import EnergyLevel, HumanState
+
+from app.models.human_state import (
+    EnergyLevel,
+    FocusLevel,
+    HumanState,
+    StressLevel,
+)
 
 def test_recommends_active_task():
     engine = DecisionEngine()
@@ -525,3 +531,102 @@ def test_active_task_matching_energy_adds_energy_reason():
     }
 
     assert RecommendationReasonCode.energy_match in reason_codes    
+
+def test_active_task_matching_focus_adds_focus_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Arquitectura de software",
+        estimated_minutes=90,
+        focus_demand="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:30:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            focus=FocusLevel.high,
+        ),
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 135.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert RecommendationReasonCode.focus_match in reason_codes    
+
+
+def test_active_demanding_task_with_high_stress_is_penalized():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar propuesta compleja",
+        estimated_minutes=90,
+        effort="alto",
+        focus_demand="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:30:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            stress=StressLevel.high,
+        ),
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 55.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert (
+        RecommendationReasonCode.high_stress_penalty
+        in reason_codes
+    )    

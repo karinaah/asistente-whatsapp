@@ -19,6 +19,8 @@ class RecommendationReasonCode(str, Enum):
     context_match = "context_match"
     overdue = "overdue"
     energy_match = "energy_match"
+    focus_match = "focus_match"
+    high_stress_penalty = "high_stress_penalty"
     
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode

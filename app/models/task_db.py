@@ -40,6 +40,12 @@ class TaskDB(Base):
         default="medio",
     )
 
+    focus_demand: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="medio",
+    )
+
     category: Mapped[str] = mapped_column(
         String(30),
         nullable=False,

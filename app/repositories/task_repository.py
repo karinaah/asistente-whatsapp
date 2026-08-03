@@ -13,6 +13,7 @@ class TaskRepository:
             estimated_minutes=task.estimated_minutes,
             priority=task.priority.value,
             effort=task.effort.value,
+            focus_demand=task.focus_demand.value,
             category=task.category.value,
             context=task.context.value,
             status=task.status.value,
@@ -97,6 +98,7 @@ class TaskRepository:
         estimated_minutes: int | None = None,
         priority: str | None = None,
         effort: str | None = None,
+        focus_demand: str | None = None,
         category: str | None = None,
         context: str | None = None,
         status: str | None = None,
@@ -129,6 +131,9 @@ class TaskRepository:
 
         if effort is not None:
             task_db.effort = effort
+
+        if focus_demand is not None:
+            task_db.focus_demand = focus_demand
 
         if category is not None:
             task_db.category = category

@@ -8,3 +8,5 @@ class DecisionRuleWeights:
     CONTEXT_MATCH = 35.0
     OVERDUE = 60.0
     ENERGY_MATCH = 40.0
+    FOCUS_MATCH = 35.0
+    HIGH_STRESS_PENALTY = -45.0

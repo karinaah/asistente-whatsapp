@@ -14,6 +14,11 @@ class TaskEffort(str, Enum):
     medium = "medio"
     high = "alto"
 
+class TaskFocusDemand(str, Enum):
+    low = "bajo"
+    medium = "medio"
+    high = "alto"
+
 class TaskStatus(str, Enum):
     pending = "pendiente"
     in_progress = "en_progreso"
@@ -47,6 +52,7 @@ class Task(BaseModel):
     estimated_minutes: int = Field(gt=0, le=1440)
     priority: TaskPriority = TaskPriority.medium
     effort: TaskEffort = TaskEffort.medium
+    focus_demand: TaskFocusDemand = TaskFocusDemand.medium
     category: TaskCategory = TaskCategory.other
     context: TaskContext = TaskContext.personal 
     status: TaskStatus = TaskStatus.pending
@@ -74,6 +80,7 @@ class TaskUpdate(BaseModel):
     estimated_minutes: int | None = Field(default=None, gt=0, le=1440)
     priority: TaskPriority | None = None
     effort: TaskEffort | None = None
+    focus_demand: TaskFocusDemand | None = None
     category: TaskCategory | None = None
     context: TaskContext | None = None
     status: TaskStatus | None = None
