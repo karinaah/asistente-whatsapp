@@ -21,7 +21,7 @@ class RecommendationReasonCode(str, Enum):
     energy_match = "energy_match"
     focus_match = "focus_match"
     high_stress_penalty = "high_stress_penalty"
-    
+
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode
     message: str = Field(min_length=1)
@@ -41,6 +41,7 @@ class Recommendation(BaseModel):
     task: Task
     scheduled_task: ScheduledTask | None = None
     score: float
+    summary: str | None = None
     reasons: list[RecommendationReason] = Field(
         default_factory=list
     )

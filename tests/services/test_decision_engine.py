@@ -630,3 +630,42 @@ def test_active_demanding_task_with_high_stress_is_penalized():
         RecommendationReasonCode.high_stress_penalty
         in reason_codes
     )    
+
+def test_recommendation_includes_natural_summary():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        priority="alta",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.summary is not None
+    assert "Preparar presentación" in recommendation.summary
+    assert "prioridad alta" in recommendation.summary.lower()    

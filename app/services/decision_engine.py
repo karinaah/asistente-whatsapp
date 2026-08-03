@@ -127,7 +127,7 @@ class DecisionEngine:
             context=context,
         )
 
-        return Recommendation(
+        recommendation = Recommendation(
             task=scheduled_task.task,
             scheduled_task=scheduled_task,
             score=sum(
@@ -136,3 +136,33 @@ class DecisionEngine:
             ),
             reasons=reasons,
         )
+
+        recommendation.summary = self._build_summary(
+            recommendation
+        )
+
+        return recommendation
+    
+
+    def _build_summary(
+        self,
+        recommendation: Recommendation,
+    ) -> str:
+        reason_messages = [
+            reason.message.rstrip(".")
+            for reason in recommendation.reasons
+        ]
+
+        if not reason_messages:
+            return (
+                f"Te recomiendo hacer "
+                f"{recommendation.task.title}."
+            )
+
+        reasons_text = ", ".join(reason_messages)
+
+        return (
+            f"Te recomiendo hacer "
+            f"{recommendation.task.title} porque "
+            f"{reasons_text.lower()}."
+        )    
