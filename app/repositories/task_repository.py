@@ -12,6 +12,7 @@ class TaskRepository:
             description=task.description,
             estimated_minutes=task.estimated_minutes,
             priority=task.priority.value,
+            effort=task.effort.value,
             category=task.category.value,
             context=task.context.value,
             status=task.status.value,
@@ -25,6 +26,7 @@ class TaskRepository:
             preferred_start_time=task.preferred_start_time,
             location=task.location,
         )
+
 
         db.add(task_db)
         db.commit()
@@ -94,6 +96,7 @@ class TaskRepository:
         description: str | None = None,
         estimated_minutes: int | None = None,
         priority: str | None = None,
+        effort: str | None = None,
         category: str | None = None,
         context: str | None = None,
         status: str | None = None,
@@ -123,6 +126,9 @@ class TaskRepository:
 
         if priority is not None:
             task_db.priority = priority
+
+        if effort is not None:
+            task_db.effort = effort
 
         if category is not None:
             task_db.category = category

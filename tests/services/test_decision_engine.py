@@ -9,7 +9,7 @@ from app.models.schedule import PlanningResponse, ScheduledTask
 from app.services.decision_engine import DecisionEngine
 from tests.factories.task_factory import make_task
 
-
+from app.models.human_state import EnergyLevel, HumanState
 
 def test_recommends_active_task():
     engine = DecisionEngine()
@@ -478,3 +478,50 @@ def test_active_task_with_overdue_deadline_adds_overdue_reason():
     }
 
     assert RecommendationReasonCode.overdue in reason_codes    
+
+def test_active_task_matching_energy_adds_energy_reason():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        effort="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            energy=EnergyLevel.high,
+        ),
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 140.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert RecommendationReasonCode.energy_match in reason_codes    

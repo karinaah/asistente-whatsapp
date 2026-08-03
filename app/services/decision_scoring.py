@@ -7,3 +7,4 @@ class DecisionRuleWeights:
     FITS_AVAILABLE_TIME = 25.0
     CONTEXT_MATCH = 35.0
     OVERDUE = 60.0
+    ENERGY_MATCH = 40.0

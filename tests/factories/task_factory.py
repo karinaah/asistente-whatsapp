@@ -6,6 +6,7 @@ def make_task(**overrides) -> Task:
         "title": "Tarea de prueba",
         "estimated_minutes": 50,
         "priority": "media",
+        "effort": "medio",
     }
 
     data.update(overrides)

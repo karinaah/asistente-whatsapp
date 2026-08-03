@@ -8,6 +8,7 @@ from app.models.schedule import (
     ScheduledTask,
 )
 from app.models.task import Task, TaskContext
+from app.models.human_state import HumanState
 
 class RecommendationReasonCode(str, Enum):
     high_priority = "high_priority"
@@ -17,7 +18,8 @@ class RecommendationReasonCode(str, Enum):
     earliest_available = "earliest_available"
     context_match = "context_match"
     overdue = "overdue"
-
+    energy_match = "energy_match"
+    
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode
     message: str = Field(min_length=1)
@@ -31,6 +33,7 @@ class DecisionContext(BaseModel):
         default=None,
         ge=0,
     )
+    human_state: HumanState | None = None   
 
 class Recommendation(BaseModel):
     task: Task

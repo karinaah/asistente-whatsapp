@@ -82,6 +82,7 @@ class TaskService:
             description=request.description,
             estimated_minutes=request.estimated_minutes,
             priority=request.priority.value if request.priority else None,
+            effort=request.effort.value if request.effort else None,
             category=request.category.value if request.category else None,
             context=request.context.value if request.context else None,
             status=request.status.value if request.status else None,
@@ -101,15 +102,6 @@ class TaskService:
 
         return task
     
-    def create(
-        self,
-        db: Session,
-        task: Task,
-    ) -> TaskDB:
-        return self.task_repository.save(
-            db=db,
-            task=task,
-        )    
     
     def get_plannable(self, db: Session) -> list[Task]:
         tasks = self.get_all(db)

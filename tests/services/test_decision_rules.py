@@ -13,6 +13,15 @@ from app.services.decision_rules.available_time_rule import (
 )
 from app.services.decision_rules.context_rule import ContextRule
 from app.services.decision_rules.overdue_rule import OverdueRule
+from app.models.human_state import (
+    EnergyLevel,
+    HumanState,
+)
+from app.services.decision_rules.energy_rule import EnergyRule
+
+
+from app.models.recommendation import RecommendationReasonCode
+
 
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
@@ -264,3 +273,93 @@ def test_overdue_rule_returns_reason_when_task_is_overdue():
     assert reasons[0].code.value == "overdue"
     assert reasons[0].score == 60.0
     assert "vencida" in reasons[0].message.lower()    
+
+def test_energy_rule_returns_reason_when_energy_matches_task_effort():
+    rule = EnergyRule()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        effort="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            energy=EnergyLevel.high,
+        ),
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].code == RecommendationReasonCode.energy_match
+    assert reasons[0].score == 40.0    
+
+
+def test_energy_rule_returns_reason_when_energy_matches_task_effort():
+    rule = EnergyRule()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        effort="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T09:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            energy=EnergyLevel.high,
+        ),
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert reasons[0].code == RecommendationReasonCode.energy_match
+    assert reasons[0].score == 40.0
+    assert "energía" in reasons[0].message.lower()    

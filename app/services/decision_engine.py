@@ -15,6 +15,7 @@ from app.services.decision_rules.available_time_rule import (
 )
 from app.services.decision_rules.context_rule import ContextRule
 from app.services.decision_rules.overdue_rule import OverdueRule
+from app.services.decision_rules.energy_rule import EnergyRule
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -25,8 +26,8 @@ class DecisionEngine:
             AvailableTimeRule(),
             ContextRule(),
             OverdueRule(),
+            EnergyRule(),
         ]
-
     def recommend(
         self,
         context: DecisionContext,

@@ -34,6 +34,12 @@ class TaskDB(Base):
         nullable=False,
     )
 
+    effort: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="medio",
+    )
+
     category: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
