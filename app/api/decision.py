@@ -58,6 +58,7 @@ def recommend_next_action(
         plan=plan,
         context=request.context,
         available_minutes=request.available_minutes,
+        human_state=request.human_state,
     )
 
     return decision_engine.recommend(

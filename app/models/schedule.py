@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.models.task import Task, TaskContext
 from app.models.time_block import TimeBlock
+from app.models.human_state import HumanState
 
 class ScheduledTask(BaseModel):
     task: Task
@@ -36,3 +37,4 @@ class PlanningFromDBRequest(BaseModel):
         default=None,
         ge=0,
     )
+    human_state: HumanState | None = None
