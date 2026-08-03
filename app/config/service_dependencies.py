@@ -11,6 +11,13 @@ from app.services.task_analyzer_service import TaskAnalyzerService
 from app.services.task_service import TaskService
 from app.services.temporal_parser import TemporalParser
 from app.services.human_state_service import HumanStateService
+from app.services.recommendation_history_service import (
+    RecommendationHistoryService,
+)
+
+def get_recommendation_history_service(
+) -> RecommendationHistoryService:
+    return RecommendationHistoryService()
 
 def get_task_service() -> TaskService:
     return TaskService()

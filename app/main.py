@@ -15,6 +15,10 @@ from app.models.human_state_db import HumanStateDB
 from app.api.human_state import (
     router as human_state_router,
 )
+from app.models.recommendation_history_db import RecommendationHistoryDB
+from app.api.recommendation_history import (
+    router as recommendation_history_router,
+)
 
 
 configure_logging()
@@ -54,3 +58,4 @@ app.include_router(planner_router)
 app.include_router(assistant_router)
 app.include_router(decision_router)
 app.include_router(human_state_router)
+app.include_router(recommendation_history_router)

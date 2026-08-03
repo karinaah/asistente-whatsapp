@@ -7,6 +7,7 @@ from app.config.dependencies import get_db
 from app.config.service_dependencies import (
     get_human_state_service,
     get_task_service,
+    get_recommendation_history_service,
 )
 
 from app.models.recommendation import (
@@ -21,6 +22,9 @@ from app.services.decision_engine import DecisionEngine
 from app.services.planner_service import PlannerService
 from app.services.task_service import TaskService
 from app.services.human_state_service import HumanStateService
+from app.services.recommendation_history_service import (
+    RecommendationHistoryService,
+)
 
 router = APIRouter(
     prefix="/decision",
@@ -42,6 +46,9 @@ def recommend_next_action(
     human_state_service: HumanStateService = Depends(
         get_human_state_service
     ),
+    recommendation_history_service: RecommendationHistoryService = Depends(
+        get_recommendation_history_service
+    ),    
 ) -> Recommendation | None:
     tasks = task_service.get_plannable(db)
 
@@ -72,6 +79,15 @@ def recommend_next_action(
         human_state=human_state,
     )
 
-    return decision_engine.recommend(
+    recommendation = decision_engine.recommend(
         decision_context
     )
+
+    if recommendation is not None:
+        recommendation_history_service.save(
+            db=db,
+            recommendation=recommendation,
+            human_state=human_state,
+        )
+
+    return recommendation
