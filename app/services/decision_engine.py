@@ -18,6 +18,10 @@ from app.services.decision_rules.overdue_rule import OverdueRule
 from app.services.decision_rules.energy_rule import EnergyRule
 from app.services.decision_rules.focus_rule import FocusRule
 from app.services.decision_rules.stress_rule import StressRule
+from app.services.recommendation_summary_service import (
+    RecommendationSummaryService,
+)
+
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -32,6 +36,10 @@ class DecisionEngine:
             FocusRule(),
             StressRule(),
         ]
+
+        self.summary_service = (
+            RecommendationSummaryService()
+        )
 
     def recommend(
         self,
@@ -137,32 +145,12 @@ class DecisionEngine:
             reasons=reasons,
         )
 
-        recommendation.summary = self._build_summary(
-            recommendation
-        )
+        recommendation.summary = (
+            self.summary_service.build_summary(
+                recommendation
+            )
+        )        
 
         return recommendation
     
 
-    def _build_summary(
-        self,
-        recommendation: Recommendation,
-    ) -> str:
-        reason_messages = [
-            reason.message.rstrip(".")
-            for reason in recommendation.reasons
-        ]
-
-        if not reason_messages:
-            return (
-                f"Te recomiendo hacer "
-                f"{recommendation.task.title}."
-            )
-
-        reasons_text = ", ".join(reason_messages)
-
-        return (
-            f"Te recomiendo hacer "
-            f"{recommendation.task.title} porque "
-            f"{reasons_text.lower()}."
-        )    
