@@ -669,3 +669,59 @@ def test_recommendation_includes_natural_summary():
     assert recommendation.summary is not None
     assert "Preparar presentación" in recommendation.summary
     assert "prioridad alta" in recommendation.summary.lower()    
+
+
+def test_recommendation_summary_groups_reasons_naturally():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        priority="alta",
+        effort="alto",
+        focus_demand="alto",
+        preferred_time_of_day="mañana",
+        context="trabajo",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-03T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-03T10:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-03T08:30:00"
+        ),
+        plan=plan,
+        context="trabajo",
+        available_minutes=90,
+        human_state=HumanState(
+            energy=EnergyLevel.high,
+            focus=FocusLevel.high,
+            stress=StressLevel.low,
+        ),
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.summary is not None
+    assert recommendation.summary.startswith(
+        "Te recomiendo hacer Preparar presentación."
+    )
+    assert "tiene prioridad alta" in recommendation.summary
+    assert "coincide con tu contexto actual" in recommendation.summary
+    assert "tu nivel de energía es adecuado" in recommendation.summary
+    assert "tu nivel de enfoque es adecuado" in recommendation.summary    
