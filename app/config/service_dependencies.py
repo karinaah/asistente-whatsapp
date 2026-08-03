@@ -10,11 +10,13 @@ from app.services.planner_service import PlannerService
 from app.services.task_analyzer_service import TaskAnalyzerService
 from app.services.task_service import TaskService
 from app.services.temporal_parser import TemporalParser
-
+from app.services.human_state_service import HumanStateService
 
 def get_task_service() -> TaskService:
     return TaskService()
 
+def get_human_state_service() -> HumanStateService:
+    return HumanStateService()
 
 def get_ai_service() -> AIService:
     if settings.USE_MOCK_AI:

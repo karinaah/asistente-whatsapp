@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.dependencies import get_db
-from app.config.service_dependencies import get_task_service
+from app.config.service_dependencies import (
+    get_human_state_service,
+    get_task_service,
+)
+
 from app.models.recommendation import (
     DecisionContext,
     Recommendation,
@@ -16,7 +20,7 @@ from app.models.schedule import (
 from app.services.decision_engine import DecisionEngine
 from app.services.planner_service import PlannerService
 from app.services.task_service import TaskService
-
+from app.services.human_state_service import HumanStateService
 
 router = APIRouter(
     prefix="/decision",
@@ -35,6 +39,9 @@ def recommend_next_action(
     request: PlanningFromDBRequest,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    human_state_service: HumanStateService = Depends(
+        get_human_state_service
+    ),
 ) -> Recommendation | None:
     tasks = task_service.get_plannable(db)
 
@@ -52,13 +59,17 @@ def recommend_next_action(
         planning_request
     )
 
+    human_state = (
+        request.human_state
+        or human_state_service.get_latest(db)
+    )
 
     decision_context = DecisionContext(
         current_time=datetime.now(),
         plan=plan,
         context=request.context,
         available_minutes=request.available_minutes,
-        human_state=request.human_state,
+        human_state=human_state,
     )
 
     return decision_engine.recommend(

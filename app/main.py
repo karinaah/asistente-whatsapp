@@ -11,6 +11,11 @@ from app.config.settings import settings
 from app.models.task_db import TaskDB
 from app.handlers.exception_handlers import register_exception_handlers
 from app.api.decision import router as decision_router
+from app.models.human_state_db import HumanStateDB
+from app.api.human_state import (
+    router as human_state_router,
+)
+
 
 configure_logging()
 
@@ -48,3 +53,4 @@ app.include_router(tasks_router)
 app.include_router(planner_router)
 app.include_router(assistant_router)
 app.include_router(decision_router)
+app.include_router(human_state_router)
