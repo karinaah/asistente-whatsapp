@@ -8,12 +8,10 @@ from app.models.human_state import (
 )
 from app.models.task import TaskCategory, TaskContext
 from app.models.task_execution import TaskExecution
-from app.services.learning_service import (
-    LearningService,
-)
+from app.services.learning_service import LearningService
 
 
-def test_learning_service_generates_all_insights():
+def test_learning_service_builds_adaptive_profile():
     service = LearningService()
 
     executions = [
@@ -37,11 +35,8 @@ def test_learning_service_generates_all_insights():
         )
     ]
 
-    insights = service.generate_insights(
-        executions
-    )
+    profile = service.build_profile(executions)
 
-    assert "estimation" in insights
-    assert "categories" in insights
-    assert "productivity" in insights
-    assert "habits" in insights
+    assert profile.generated_from_executions == 1
+    assert profile.work_duration_multiplier == 1.25
+    assert profile.confidence == 0.05

@@ -29,17 +29,12 @@ class AdaptivePlanningService:
             .get_all_for_learning(db)
         )
 
-        learning_data = (
-            self.learning_service.generate_insights(
-                executions
-            )
-        )
 
-        estimation_insights = learning_data[
-            "estimation"
-        ]
+        profile = self.learning_service.build_profile(
+            executions
+        )
 
         return self.planner_service.create_plan(
             request=request,
-            learning_insights=estimation_insights,
+            adaptive_profile=profile,
         )

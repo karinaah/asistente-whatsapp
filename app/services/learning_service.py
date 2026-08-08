@@ -1,5 +1,8 @@
-from app.models.learning_insight import LearningInsight
+from app.models.adaptive_profile import AdaptiveProfile
 from app.models.task_execution import TaskExecution
+from app.services.adaptive_profile_builder import (
+    AdaptiveProfileBuilder,
+)
 from app.services.analyzers.category_analyzer import (
     CategoryAnalyzer,
 )
@@ -16,36 +19,29 @@ from app.services.analyzers.productivity_analyzer import (
 
 class LearningService:
     def __init__(self) -> None:
-        self.estimation_analyzer = (
-            EstimationAnalyzer()
-        )
-        self.category_analyzer = (
-            CategoryAnalyzer()
-        )
-        self.productivity_analyzer = (
-            ProductivityAnalyzer()
-        )
-        self.habit_analyzer = (
-            HabitAnalyzer()
-        )
+        self.estimation_analyzer = EstimationAnalyzer()
+        self.category_analyzer = CategoryAnalyzer()
+        self.productivity_analyzer = ProductivityAnalyzer()
+        self.habit_analyzer = HabitAnalyzer()
+        self.profile_builder = AdaptiveProfileBuilder()
 
-    def generate_insights(
+    def build_profile(
         self,
         executions: list[TaskExecution],
-    ) -> dict[str, object]:
-        return {
-            "estimation": self.estimation_analyzer.analyze(
+    ) -> AdaptiveProfile:
+        estimation_insights = (
+            self.estimation_analyzer.analyze(
                 executions
-            ),
-            "categories": self.category_analyzer.analyze(
+            )
+        )
+
+        productivity_insight = (
+            self.productivity_analyzer.analyze(
                 executions
-            ),
-            "productivity": (
-                self.productivity_analyzer.analyze(
-                    executions
-                )
-            ),
-            "habits": self.habit_analyzer.analyze(
-                executions
-            ),
-        }
+            )
+        )
+
+        return self.profile_builder.build(
+            estimation_insights=estimation_insights,
+            productivity=productivity_insight,
+        )

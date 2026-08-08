@@ -14,7 +14,9 @@ from app.models.task import Task
 from app.services.estimation_adjustment_service import (
     EstimationAdjustmentService,
 )
-
+from app.models.adaptive_profile import (
+    AdaptiveProfile,
+)
 
 @dataclass
 class AvailableSlot:
@@ -34,8 +36,8 @@ class PlannerService:
     def create_plan(
         self,
         request: PlanningRequest,
-        learning_insights: list[LearningInsight] | None = None,
-    ) -> PlanningResponse:        
+        adaptive_profile: AdaptiveProfile | None = None,
+    ) -> PlanningResponse:
         current_time = datetime.combine(
             request.plan_date,
             time(hour=request.day_start_hour),
@@ -51,11 +53,14 @@ class PlannerService:
                 if task.context == request.context
             ]
 
-        if learning_insights:
-            tasks_to_plan = self._apply_estimation_adjustments(
-                tasks=tasks_to_plan,
-                insights=learning_insights,
+        if adaptive_profile is not None:
+            tasks_to_plan = (
+                self._apply_profile_adjustments(
+                    tasks=tasks_to_plan,
+                    profile=adaptive_profile,
+                )
             )
+
 
         ordered_tasks = self.task_sorter.sort(tasks_to_plan)
 
@@ -360,5 +365,43 @@ class PlannerService:
             )
 
             adjusted_tasks.append(adjusted_task)
+
+        return adjusted_tasks
+        
+    def _apply_profile_adjustments(
+        self,
+        tasks: list[Task],
+        profile: AdaptiveProfile,
+    ) -> list[Task]:
+        adjusted_tasks: list[Task] = []
+
+        multipliers = {
+            "trabajo": profile.work_duration_multiplier,
+            "estudio": profile.study_duration_multiplier,
+            "personal": profile.personal_duration_multiplier,
+            "salud": profile.health_duration_multiplier,
+            "otro": profile.other_duration_multiplier,
+        }
+
+        for task in tasks:
+            multiplier = multipliers.get(
+                task.category.value,
+                1.0,
+            )
+
+            adjusted_minutes = max(
+                1,
+                round(
+                    task.estimated_minutes * multiplier
+                ),
+            )
+
+            adjusted_tasks.append(
+                task.model_copy(
+                    update={
+                        "estimated_minutes": adjusted_minutes,
+                    }
+                )
+            )
 
         return adjusted_tasks

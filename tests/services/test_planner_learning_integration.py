@@ -1,12 +1,12 @@
 from datetime import date
 
-from app.models.learning_insight import LearningInsight
+from app.models.adaptive_profile import AdaptiveProfile
 from app.models.schedule import PlanningRequest
 from app.models.task import Task
 from app.services.planner_service import PlannerService
 
 
-def test_planner_adjusts_task_duration_using_learning_insight():
+def test_planner_adjusts_task_duration_using_adaptive_profile():
     planner = PlannerService()
 
     task = Task(
@@ -26,17 +26,15 @@ def test_planner_adjusts_task_duration_using_learning_insight():
         context="trabajo",
     )
 
-    insight = LearningInsight(
-        category="trabajo",
-        executions=5,
-        average_error_percentage=20.0,
-        average_estimated_minutes=60.0,
-        average_actual_minutes=72.0,
+    profile = AdaptiveProfile(
+        generated_from_executions=5,
+        work_duration_multiplier=1.2,
+        confidence=0.25,
     )
 
     plan = planner.create_plan(
         request=request,
-        learning_insights=[insight],
+        adaptive_profile=profile,
     )
 
     assert len(plan.scheduled_tasks) == 1
