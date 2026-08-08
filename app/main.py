@@ -19,7 +19,10 @@ from app.models.recommendation_history_db import RecommendationHistoryDB
 from app.api.recommendation_history import (
     router as recommendation_history_router,
 )
-
+from app.models.task_execution_db import TaskExecutionDB
+from app.api.task_execution import (
+    router as task_execution_router,
+)
 
 configure_logging()
 
@@ -59,3 +62,4 @@ app.include_router(assistant_router)
 app.include_router(decision_router)
 app.include_router(human_state_router)
 app.include_router(recommendation_history_router)
+app.include_router(task_execution_router)

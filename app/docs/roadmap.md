@@ -53,13 +53,25 @@ Objetivo: separar claramente las distintas áreas de la vida del usuario.
 - Vista Todo, Trabajo y Personal.
 - Cambio rápido entre espacios.
 
-## Fase 3 — Asistente de decisión
+
+## Fase 3 — Asistente de decisión ✅
 
 Objetivo: ayudar al usuario a decidir, no solo organizar.
 
-- Función “¿Qué hago ahora?”.
+### Completado
+
+- Función "¿Qué hago ahora?"
 - Recomendación de la siguiente tarea.
 - Explicación de cada recomendación.
+- Motor de reglas.
+- Contexto del usuario.
+- Recomendaciones basadas en energía.
+- Recomendaciones basadas en enfoque.
+- Penalización por estrés.
+- Historial de recomendaciones.
+
+### Pendiente
+
 - Identificación de tareas posponibles.
 - Alertas de sobrecarga.
 - Replanificación sugerida.
@@ -68,6 +80,13 @@ Objetivo: ayudar al usuario a decidir, no solo organizar.
 ## Fase 4 — Aprendizaje personal
 
 Objetivo: adaptar la planificación al comportamiento real.
+
+### Base implementada
+
+- Persistencia del estado humano.
+- Historial de recomendaciones.
+
+### Próximos objetivos
 
 - Registrar duración estimada y duración real.
 - Aprender precisión de estimaciones.
@@ -189,3 +208,57 @@ AURA puede:
 - Generar un plan automáticamente usando únicamente tareas pendientes.
 
 
+# Sprint 4 ✅ Finalizado
+
+## Objetivos
+
+- Motor de decisión.
+- Endpoint `/decision/recommend`.
+- Recommendation.
+- RecommendationReason.
+- Score por reglas.
+- Explicación de recomendaciones.
+- DecisionEngine desacoplado.
+- Sistema extensible de reglas.
+
+## Resultado
+
+AURA puede:
+
+- Recomendar la siguiente tarea.
+- Explicar por qué fue recomendada.
+- Considerar prioridad, deadlines, contexto y tiempo disponible.
+- Construir recomendaciones mediante reglas independientes.
+
+
+# Sprint 5 ✅ Finalizado
+
+## Objetivos
+
+- HumanState.
+- Recomendaciones sensibles al estado del usuario.
+- Persistencia del estado humano.
+- Historial de recomendaciones.
+- Resúmenes naturales.
+
+## Resultado
+
+AURA ahora puede:
+
+- Considerar energía, enfoque y estrés al recomendar tareas.
+- Recuperar automáticamente el último estado humano registrado.
+- Generar explicaciones naturales de las recomendaciones.
+- Guardar el historial completo de recomendaciones.
+- Persistir el estado humano y reutilizarlo en futuras decisiones.
+
+## Nuevas reglas
+
+- EnergyRule
+- FocusRule
+- StressRule
+
+## Nuevos componentes
+
+- RecommendationSummaryService
+- HumanStateService
+- RecommendationHistoryService
