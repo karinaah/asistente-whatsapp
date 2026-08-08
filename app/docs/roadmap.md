@@ -262,3 +262,28 @@ AURA ahora puede:
 - RecommendationSummaryService
 - HumanStateService
 - RecommendationHistoryService
+
+# Sprint 6 ✅ Finalizado
+
+## Objetivos
+
+- Registrar ejecuciones reales de tareas.
+- Comparar duración estimada y duración real.
+- Persistir ejecuciones.
+- Analizar precisión de estimaciones.
+- Generar insights por categoría.
+- Analizar productividad según estado humano.
+- Detectar métricas básicas de hábitos.
+- Crear arquitectura modular de aprendizaje.
+
+## Resultado
+
+AURA puede:
+
+- Registrar cómo se ejecutó realmente una tarea.
+- Comparar estimaciones con duración real.
+- Detectar subestimaciones y sobreestimaciones.
+- Agrupar patrones por categoría.
+- Analizar diferencias según energía.
+- Calcular métricas básicas de hábitos.
+- Generar insights estructurados mediante LearningService.

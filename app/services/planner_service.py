@@ -9,7 +9,11 @@ from app.models.schedule import (
 from app.models.time_block import BlockType, TimeBlock
 from app.services.task_sorter import TaskSorter
 from app.services.scoring_engine import ScoringEngine
-
+from app.models.learning_insight import LearningInsight
+from app.models.task import Task
+from app.services.estimation_adjustment_service import (
+    EstimationAdjustmentService,
+)
 
 
 @dataclass
@@ -23,12 +27,15 @@ class PlannerService:
     def __init__(self):
         self.task_sorter = TaskSorter()
         self.scoring_engine = ScoringEngine()
-
+        self.estimation_adjustment_service = (
+            EstimationAdjustmentService()
+        )
 
     def create_plan(
         self,
         request: PlanningRequest,
-    ) -> PlanningResponse:
+        learning_insights: list[LearningInsight] | None = None,
+    ) -> PlanningResponse:        
         current_time = datetime.combine(
             request.plan_date,
             time(hour=request.day_start_hour),
@@ -44,7 +51,15 @@ class PlannerService:
                 if task.context == request.context
             ]
 
-        ordered_tasks = self.task_sorter.sort(tasks_to_plan)        
+        if learning_insights:
+            tasks_to_plan = self._apply_estimation_adjustments(
+                tasks=tasks_to_plan,
+                insights=learning_insights,
+            )
+
+        ordered_tasks = self.task_sorter.sort(tasks_to_plan)
+
+
 
         for block in request.busy_blocks:
             block.start_time = block.start_time.replace(
@@ -310,3 +325,40 @@ class PlannerService:
 
         return available_slots
     
+    def _apply_estimation_adjustments(
+        self,
+        tasks: list[Task],
+        insights: list[LearningInsight],
+    ) -> list[Task]:
+        insights_by_category = {
+            insight.category: insight
+            for insight in insights
+        }
+
+        adjusted_tasks: list[Task] = []
+
+        for task in tasks:
+            insight = insights_by_category.get(
+                task.category.value
+            )
+
+            if insight is None:
+                adjusted_tasks.append(task)
+                continue
+
+            adjusted_minutes = (
+                self.estimation_adjustment_service.adjust(
+                    estimated_minutes=task.estimated_minutes,
+                    insight=insight,
+                )
+            )
+
+            adjusted_task = task.model_copy(
+                update={
+                    "estimated_minutes": adjusted_minutes,
+                }
+            )
+
+            adjusted_tasks.append(adjusted_task)
+
+        return adjusted_tasks

@@ -14,6 +14,9 @@ from app.services.human_state_service import HumanStateService
 from app.services.recommendation_history_service import (
     RecommendationHistoryService,
 )
+from app.services.adaptive_planning_service import (
+    AdaptivePlanningService,
+)
 
 def get_recommendation_history_service(
 ) -> RecommendationHistoryService:
@@ -61,3 +64,6 @@ def get_assistant_service(
         task_repository=task_repository,
         task_analyzer_service=task_analyzer_service,
     )
+
+def get_adaptive_planning_service() -> AdaptivePlanningService:
+    return AdaptivePlanningService()
