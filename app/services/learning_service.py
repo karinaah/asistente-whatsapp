@@ -1,37 +1,51 @@
-from collections import defaultdict
-
+from app.models.learning_insight import LearningInsight
 from app.models.task_execution import TaskExecution
-from app.services.execution_analysis_service import (
-    ExecutionAnalysisService,
+from app.services.analyzers.category_analyzer import (
+    CategoryAnalyzer,
+)
+from app.services.analyzers.estimation_analyzer import (
+    EstimationAnalyzer,
+)
+from app.services.analyzers.habit_analyzer import (
+    HabitAnalyzer,
+)
+from app.services.analyzers.productivity_analyzer import (
+    ProductivityAnalyzer,
 )
 
 
 class LearningService:
     def __init__(self) -> None:
-        self.analysis_service = ExecutionAnalysisService()
+        self.estimation_analyzer = (
+            EstimationAnalyzer()
+        )
+        self.category_analyzer = (
+            CategoryAnalyzer()
+        )
+        self.productivity_analyzer = (
+            ProductivityAnalyzer()
+        )
+        self.habit_analyzer = (
+            HabitAnalyzer()
+        )
 
-    def average_error_by_category(
+    def generate_insights(
         self,
         executions: list[TaskExecution],
-    ) -> dict[str, float]:
-        errors_by_category = defaultdict(list)
-
-        for execution in executions:
-            analysis = self.analysis_service.analyze(
-                execution
-            )
-
-            errors_by_category[
-                execution.category.value
-            ].append(
-                analysis.error_percentage
-            )
-
+    ) -> dict[str, object]:
         return {
-            category: round(
-                sum(errors) / len(errors),
-                2,
-            )
-            for category, errors
-            in errors_by_category.items()
+            "estimation": self.estimation_analyzer.analyze(
+                executions
+            ),
+            "categories": self.category_analyzer.analyze(
+                executions
+            ),
+            "productivity": (
+                self.productivity_analyzer.analyze(
+                    executions
+                )
+            ),
+            "habits": self.habit_analyzer.analyze(
+                executions
+            ),
         }
