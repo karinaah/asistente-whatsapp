@@ -10,7 +10,9 @@ from app.services.adaptive_profile_service import (
 )
 from app.services.planner_service import PlannerService
 from app.services.task_service import TaskService
-
+from app.models.planning_decision import (
+    PlanningDecision,
+)
 
 class PlanningWorkflowService:
     def __init__(self) -> None:
@@ -55,4 +57,25 @@ class PlanningWorkflowService:
             break_minutes=request.break_minutes,
             busy_blocks=request.busy_blocks,
             context=request.context,
+        )    
+    
+    def explain_plan_from_db(
+        self,
+        db: Session,
+        request: PlanningFromDBRequest,
+    ) -> list[PlanningDecision]:
+        tasks = self.task_service.get_plannable(db)
+
+        planning_request = self.build_planning_request(
+            tasks=tasks,
+            request=request,
+        )
+
+        adaptive_profile = (
+            self.adaptive_profile_service.get(db)
+        )
+
+        return self.planner_service.explain_plan(
+            request=planning_request,
+            adaptive_profile=adaptive_profile,
         )    

@@ -116,34 +116,15 @@ class AssistantChatService:
             human_state=request.human_state,
         )
 
-        tasks = (
+        decisions = (
             self.planning_workflow_service
-            .task_service
-            .get_plannable(db)
-        )
-
-        adaptive_profile = (
-            self.planning_workflow_service
-            .adaptive_profile_service
-            .get(db)
-        )
-
-        planning_domain_request = (
-            self.planning_workflow_service
-            .build_planning_request(
-                tasks=tasks,
+            .explain_plan_from_db(
+                db=db,
                 request=planning_request,
             )
         )
 
-        decisions = (
-            self.planning_workflow_service
-            .planner_service
-            .explain_plan(
-                request=planning_domain_request,
-                adaptive_profile=adaptive_profile,
-            )
-        )
+
 
         if not decisions:
             return AssistantChatResponse(
