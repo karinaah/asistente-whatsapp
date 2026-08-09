@@ -5,11 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.config.dependencies import get_db
 from app.config.service_dependencies import (
+    get_adaptive_profile_service,
     get_human_state_service,
-    get_task_service,
     get_recommendation_history_service,
+    get_task_service,
 )
-
 from app.models.recommendation import (
     DecisionContext,
     Recommendation,
@@ -25,6 +25,10 @@ from app.services.human_state_service import HumanStateService
 from app.services.recommendation_history_service import (
     RecommendationHistoryService,
 )
+from app.services.adaptive_profile_service import (
+    AdaptiveProfileService,
+)
+
 
 router = APIRouter(
     prefix="/decision",
@@ -48,7 +52,10 @@ def recommend_next_action(
     ),
     recommendation_history_service: RecommendationHistoryService = Depends(
         get_recommendation_history_service
-    ),    
+    ),  
+    adaptive_profile_service: AdaptiveProfileService = Depends(
+    get_adaptive_profile_service
+    ),  
 ) -> Recommendation | None:
     tasks = task_service.get_plannable(db)
 
@@ -71,12 +78,17 @@ def recommend_next_action(
         or human_state_service.get_latest(db)
     )
 
+    adaptive_profile = (
+    adaptive_profile_service.get(db)
+    )
+
     decision_context = DecisionContext(
         current_time=datetime.now(),
         plan=plan,
         context=request.context,
         available_minutes=request.available_minutes,
         human_state=human_state,
+        adaptive_profile=adaptive_profile,
     )
 
     recommendation = decision_engine.recommend(

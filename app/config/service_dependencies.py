@@ -17,6 +17,10 @@ from app.services.recommendation_history_service import (
 from app.services.adaptive_planning_service import (
     AdaptivePlanningService,
 )
+from app.services.adaptive_profile_service import (
+    AdaptiveProfileService,
+)
+
 
 def get_recommendation_history_service(
 ) -> RecommendationHistoryService:
@@ -67,3 +71,6 @@ def get_assistant_service(
 
 def get_adaptive_planning_service() -> AdaptivePlanningService:
     return AdaptivePlanningService()
+
+def get_adaptive_profile_service() -> AdaptiveProfileService:
+    return AdaptiveProfileService()
