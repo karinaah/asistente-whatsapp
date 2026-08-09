@@ -1,40 +1,23 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.dependencies import get_db
-from app.config.service_dependencies import (
-    get_adaptive_profile_service,
-    get_human_state_service,
-    get_recommendation_history_service,
-)
-from app.models.recommendation import (
-    DecisionContext,
-    Recommendation,
+from app.models.recommendation import Recommendation
+from app.models.schedule import PlanningFromDBRequest
+from app.services.recommendation_workflow_service import (
+    RecommendationWorkflowService,
 )
 
-from app.services.decision_engine import DecisionEngine
-from app.services.planner_service import PlannerService
-from app.services.human_state_service import HumanStateService
-from app.services.recommendation_history_service import (
-    RecommendationHistoryService,
-)
-from app.services.adaptive_profile_service import (
-    AdaptiveProfileService,
-)
-from app.services.planning_workflow_service import (
-    PlanningWorkflowService,
-)
-from app.models.schedule import PlanningFromDBRequest
 
 router = APIRouter(
     prefix="/decision",
     tags=["Decision"],
 )
 
-planning_workflow_service = PlanningWorkflowService()
-decision_engine = DecisionEngine()
+recommendation_workflow_service = (
+    RecommendationWorkflowService()
+)
+
 
 @router.post(
     "/recommend",
@@ -43,50 +26,8 @@ decision_engine = DecisionEngine()
 def recommend_next_action(
     request: PlanningFromDBRequest,
     db: Session = Depends(get_db),
-    human_state_service: HumanStateService = Depends(
-        get_human_state_service
-    ),
-    recommendation_history_service: RecommendationHistoryService = Depends(
-        get_recommendation_history_service
-    ),  
-    adaptive_profile_service: AdaptiveProfileService = Depends(
-    get_adaptive_profile_service
-    ),  
 ) -> Recommendation | None:
-    plan = planning_workflow_service.create_plan_from_db(
+    return recommendation_workflow_service.recommend(
         db=db,
         request=request,
     )
-
-
-
-    human_state = (
-        request.human_state
-        or human_state_service.get_latest(db)
-    )
-
-    adaptive_profile = (
-    adaptive_profile_service.get(db)
-    )
-
-    decision_context = DecisionContext(
-        current_time=datetime.now(),
-        plan=plan,
-        context=request.context,
-        available_minutes=request.available_minutes,
-        human_state=human_state,
-        adaptive_profile=adaptive_profile,
-    )
-
-    recommendation = decision_engine.recommend(
-        decision_context
-    )
-
-    if recommendation is not None:
-        recommendation_history_service.save(
-            db=db,
-            recommendation=recommendation,
-            human_state=human_state,
-        )
-
-    return recommendation

@@ -28,6 +28,9 @@ from app.api.adaptive_profile import (
     router as adaptive_profile_router,
 )
 from app.api import explanation_api
+from app.api.assistant_chat import (
+    router as assistant_chat_router,
+)
 
 configure_logging()
 
@@ -72,3 +75,4 @@ app.include_router(adaptive_profile_router)
 app.include_router(
     explanation_api.router
 )
+app.include_router(assistant_chat_router)

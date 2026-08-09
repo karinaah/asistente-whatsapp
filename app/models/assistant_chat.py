@@ -2,11 +2,13 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+from app.models.human_state import HumanState
+from app.models.task import TaskContext
 from app.models.time_block import TimeBlock
 
 
-class AssistantRequest(BaseModel):
-    text: str
+class AssistantChatRequest(BaseModel):
+    message: str
 
     plan_date: date = Field(
         default_factory=date.today,
@@ -33,3 +35,16 @@ class AssistantRequest(BaseModel):
     busy_blocks: list[TimeBlock] = Field(
         default_factory=list,
     )
+
+    context: TaskContext | None = None
+
+    available_minutes: int | None = Field(
+        default=None,
+        ge=0,
+    )
+
+    human_state: HumanState | None = None
+
+
+class AssistantChatResponse(BaseModel):
+    answer: str
