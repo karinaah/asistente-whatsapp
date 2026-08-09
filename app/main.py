@@ -27,6 +27,7 @@ from app.models.adaptive_profile_db import AdaptiveProfileDB
 from app.api.adaptive_profile import (
     router as adaptive_profile_router,
 )
+from app.api import explanation_api
 
 configure_logging()
 
@@ -68,3 +69,6 @@ app.include_router(human_state_router)
 app.include_router(recommendation_history_router)
 app.include_router(task_execution_router)
 app.include_router(adaptive_profile_router)
+app.include_router(
+    explanation_api.router
+)
