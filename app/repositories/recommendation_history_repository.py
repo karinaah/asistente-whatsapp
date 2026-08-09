@@ -73,3 +73,15 @@ class RecommendationHistoryRepository:
             )
             .all()
         )
+    
+    def get_latest(
+        self,
+        db: Session,
+    ) -> RecommendationHistoryDB | None:
+        return (
+            db.query(RecommendationHistoryDB)
+            .order_by(
+                RecommendationHistoryDB.created_at.desc()
+            )
+            .first()
+        )    

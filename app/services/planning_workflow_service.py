@@ -27,14 +27,9 @@ class PlanningWorkflowService:
     ) -> PlanningResponse:
         tasks = self.task_service.get_plannable(db)
 
-        planning_request = PlanningRequest(
+        planning_request = self.build_planning_request(
             tasks=tasks,
-            plan_date=request.plan_date,
-            day_start_hour=request.day_start_hour,
-            day_end_hour=request.day_end_hour,
-            break_minutes=request.break_minutes,
-            busy_blocks=request.busy_blocks,
-            context=request.context,
+            request=request,
         )
 
         adaptive_profile = (
@@ -45,3 +40,19 @@ class PlanningWorkflowService:
             request=planning_request,
             adaptive_profile=adaptive_profile,
         )
+
+
+    def build_planning_request(
+        self,
+        tasks,
+        request: PlanningFromDBRequest,
+    ) -> PlanningRequest:
+        return PlanningRequest(
+            tasks=tasks,
+            plan_date=request.plan_date,
+            day_start_hour=request.day_start_hour,
+            day_end_hour=request.day_end_hour,
+            break_minutes=request.break_minutes,
+            busy_blocks=request.busy_blocks,
+            context=request.context,
+        )    

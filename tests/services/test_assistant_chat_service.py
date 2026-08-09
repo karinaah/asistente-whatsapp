@@ -5,8 +5,20 @@ from app.services.assistant_chat_service import (
     AssistantChatService,
 )
 
-def test_chat_planning():
+def test_chat_planning(monkeypatch):
     service = AssistantChatService()
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_plannable",
+        lambda db: [],
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db: None,
+    )
 
     response = service.chat(
         db=None,
@@ -15,7 +27,10 @@ def test_chat_planning():
         ),
     )
 
-    assert "planificar" in response.answer.lower()
+    assert (
+        "no encontré tareas"
+        in response.answer.lower()
+    )
 
 
 def test_chat_recommendation(monkeypatch):
@@ -75,8 +90,28 @@ def test_chat_learning(monkeypatch):
     )
 
 
-def test_chat_explanation():
+def test_chat_explanation(monkeypatch):
     service = AssistantChatService()
+
+    fake_history = type(
+        "FakeHistory",
+        (),
+        {
+            "summary": (
+                "Te recomendé hacer Preparar presentación."
+            ),
+            "task_title": "Preparar presentación",
+            "reasons_json": (
+                '[{"message": "Tiene prioridad alta."}]'
+            ),
+        },
+    )()
+
+    monkeypatch.setattr(
+        service.recommendation_history_service,
+        "get_latest",
+        lambda db: fake_history,
+    )
 
     response = service.chat(
         db=None,
@@ -85,7 +120,10 @@ def test_chat_explanation():
         ),
     )
 
-    assert "explic" in response.answer.lower()
+    assert (
+        response.answer
+        == "Te recomendé hacer Preparar presentación."
+    )
 
 
 def test_chat_unknown():

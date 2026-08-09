@@ -39,3 +39,16 @@ class RecommendationHistoryService:
             RecommendationHistory.model_validate(item)
             for item in history
         ]
+    
+    def get_latest(
+        self,
+        db: Session,
+    ) -> RecommendationHistory | None:
+        history = self.repository.get_latest(db)
+
+        if history is None:
+            return None
+
+        return RecommendationHistory.model_validate(
+            history
+        )    
