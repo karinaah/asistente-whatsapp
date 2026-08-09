@@ -9,7 +9,9 @@ from app.services.planner_service import PlannerService
 from app.services.task_execution_service import (
     TaskExecutionService,
 )
-
+from app.services.adaptive_profile_service import (
+    AdaptiveProfileService,
+)
 
 class AdaptivePlanningService:
     def __init__(self) -> None:
@@ -18,6 +20,9 @@ class AdaptivePlanningService:
         )
         self.learning_service = LearningService()
         self.planner_service = PlannerService()
+        self.adaptive_profile_service = (
+            AdaptiveProfileService()
+        )
 
     def create_plan(
         self,
@@ -29,10 +34,10 @@ class AdaptivePlanningService:
             .get_all_for_learning(db)
         )
 
+        profile = self.adaptive_profile_service.get(db)
 
-        profile = self.learning_service.build_profile(
-            executions
-        )
+        if profile is None:
+            profile = self.adaptive_profile_service.rebuild(db)
 
         return self.planner_service.create_plan(
             request=request,

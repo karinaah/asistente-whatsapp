@@ -105,3 +105,55 @@ Task
 PlanningRequest
    ↓
 PlannerService
+
+
+
+
+# Arquitectura
+
+## Planner Engine
+
+Genera el plan diario.
+
+## Decision Engine
+
+Selecciona la mejor tarea.
+
+## Learning Engine
+
+Analiza ejecuciones.
+
+## Adaptive Profile Service
+
+Mantiene el conocimiento consolidado del usuario.
+
+## Repositories
+
+Persistencia.
+
+## API
+
+Exposición REST.
+
+
+
+                AURA
+
+          Planner Engine
+                 ▲
+                 │
+AdaptiveProfileService
+                 ▲
+                 │
+         Learning Engine
+                 ▲
+                 │
+        TaskExecution
+                 │
+                 ▼
+          SQLite Database
+
+Decision Engine
+        ▲
+        │
+AdaptiveProfile

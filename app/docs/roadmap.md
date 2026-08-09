@@ -287,3 +287,37 @@ AURA puede:
 - Analizar diferencias según energía.
 - Calcular métricas básicas de hábitos.
 - Generar insights estructurados mediante LearningService.
+
+
+## Sprint 7 ✅ Finalizado
+
+### Adaptive Intelligence
+
+Objetivos
+
+- Registro de ejecuciones.
+- Learning Engine.
+- Adaptive Profile.
+- Persistencia del perfil.
+- Planner adaptativo.
+- Decision Engine adaptativo.
+- Historial de recomendaciones.
+- Explicaciones de aprendizaje.
+
+Resultado
+
+AURA aprende del comportamiento del usuario y reutiliza ese conocimiento para mejorar automáticamente su planificación y sus recomendaciones.
+
+
+## Sprint 8
+
+### Conversational Intelligence
+
+Objetivos
+
+- Explicar el perfil adaptativo.
+- Explicar recomendaciones.
+- Explicar planificación.
+- Mostrar evolución del aprendizaje.
+- Comparar perfiles.
+- Exponer aprendizaje mediante API.

@@ -23,6 +23,10 @@ from app.models.task_execution_db import TaskExecutionDB
 from app.api.task_execution import (
     router as task_execution_router,
 )
+from app.models.adaptive_profile_db import AdaptiveProfileDB
+from app.api.adaptive_profile import (
+    router as adaptive_profile_router,
+)
 
 configure_logging()
 
@@ -63,3 +67,4 @@ app.include_router(decision_router)
 app.include_router(human_state_router)
 app.include_router(recommendation_history_router)
 app.include_router(task_execution_router)
+app.include_router(adaptive_profile_router)
