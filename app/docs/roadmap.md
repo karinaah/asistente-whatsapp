@@ -1,152 +1,27 @@
-# AURA — Roadmap
+# AURA Roadmap
 
 ## Estado actual
 
-### Completado
+### Versión
 
-- Motor inicial de planificación.
-- Priorización de tareas.
-- Manejo de deadlines.
-- Preferencias horarias.
-- Bloques ocupados.
-- Descansos.
-- Reducción de fragmentación.
-- Timeline diario.
-- Separación de ScoringEngine.
-- ScoreBreakdown.
-- Factories de tests.
-- Tests unitarios e integración.
-- Contextos de trabajo y vida personal.
-- Filtrado de planificación por contexto.
+v0.8.0 — Adaptive Intelligence
 
-## Fase 1 — MVP funcional
+### Estado
 
-Objetivo: convertir el motor actual en una aplicación utilizable.
+Desarrollo activo.
 
-### Pendiente
+### Capacidades principales
 
-- Completar soporte de contexto en modelo, repositorio, servicios y API.
-- CRUD de tareas.
-- Persistencia estable de tareas.
-- Estados de tarea:
-  - pendiente;
-  - programada;
-  - en progreso;
-  - completada;
-  - cancelada.
-- Endpoint para generar un plan diario.
-- Endpoint para marcar una tarea como completada.
-- Validaciones y manejo de errores.
-- Tests de API y persistencia.
-- Documentación básica de instalación y uso.
+- Planner Engine.
+- Decision Engine.
+- Learning Engine.
+- Adaptive Profile persistente.
+- Planificación adaptativa.
+- Recomendaciones adaptativas.
+- API REST.
+- Suite de pruebas automatizadas (57 tests).
 
-## Fase 2 — Experiencia por espacios
-
-Objetivo: separar claramente las distintas áreas de la vida del usuario.
-
-- Diseñar entidad Workspace.
-- Migrar gradualmente desde TaskContext.
-- Crear workspaces configurables.
-- Horarios por workspace.
-- Descansos por workspace.
-- Preferencias por workspace.
-- Vista Todo, Trabajo y Personal.
-- Cambio rápido entre espacios.
-
-
-## Fase 3 — Asistente de decisión ✅
-
-Objetivo: ayudar al usuario a decidir, no solo organizar.
-
-### Completado
-
-- Función "¿Qué hago ahora?"
-- Recomendación de la siguiente tarea.
-- Explicación de cada recomendación.
-- Motor de reglas.
-- Contexto del usuario.
-- Recomendaciones basadas en energía.
-- Recomendaciones basadas en enfoque.
-- Penalización por estrés.
-- Historial de recomendaciones.
-
-### Pendiente
-
-- Identificación de tareas posponibles.
-- Alertas de sobrecarga.
-- Replanificación sugerida.
-- Confirmación del usuario antes de cambios importantes.
-
-## Fase 4 — Aprendizaje personal
-
-Objetivo: adaptar la planificación al comportamiento real.
-
-### Base implementada
-
-- Persistencia del estado humano.
-- Historial de recomendaciones.
-
-### Próximos objetivos
-
-- Registrar duración estimada y duración real.
-- Aprender precisión de estimaciones.
-- Detectar horarios de mayor productividad.
-- Aprender tolerancia a bloques largos.
-- Detectar patrones de postergación.
-- Ajustar recomendaciones según historial.
-
-## Fase 5 — Integraciones
-
-Objetivo: reducir trabajo manual sin hacer obligatorio ningún proveedor.
-
-- Calendario.
-- Importación de actividades físicas.
-- Garmin, cuando exista una vía viable.
-- Apple Health.
-- Google Health Connect.
-- Fitbit u otros proveedores.
-- GitHub.
-- Correo y herramientas de comunicación.
-
-Todas las integraciones deberán ser opcionales y desacopladas del dominio central.
-
-## Fase 6 — Evidencias de cumplimiento
-
-Objetivo: detectar automáticamente cuándo una tarea fue realizada.
-
-- Modelo ActivityRecord.
-- CompletionMatcher.
-- Coincidencia por tipo, horario y duración.
-- Confirmación ante coincidencias ambiguas.
-- Completar ejercicio desde actividad registrada.
-- Posibles evidencias futuras:
-  - eventos de calendario;
-  - commits;
-  - sesiones de estudio;
-  - documentos entregados.
-
-## Fase 7 — Simulación y protección del tiempo
-
-Objetivo: ayudar a evaluar decisiones futuras.
-
-- Simular nuevos compromisos.
-- Mostrar horas añadidas.
-- Detectar colisiones futuras.
-- Mostrar tareas desplazadas.
-- Estimar impacto en objetivos.
-- Detectar sacrificios recurrentes.
-- Recomendar aceptar, rechazar o renegociar.
-
-## Fuera del MVP
-
-Estas capacidades no deben retrasar la primera versión:
-
-- integración directa con relojes;
-- adaptación automática por sueño o estrés;
-- replanificación autónoma;
-- simulación avanzada;
-- modelo predictivo;
-- inteligencia conversacional completa.
+---
 
 
 
@@ -287,37 +162,59 @@ AURA puede:
 - Analizar diferencias según energía.
 - Calcular métricas básicas de hábitos.
 - Generar insights estructurados mediante LearningService.
-
+- Construir la base del Learning Engine.
 
 ## Sprint 7 ✅ Finalizado
 
 ### Adaptive Intelligence
 
-Objetivos
+### Objetivos
 
-- Registro de ejecuciones.
-- Learning Engine.
 - Adaptive Profile.
 - Persistencia del perfil.
 - Planner adaptativo.
 - Decision Engine adaptativo.
-- Historial de recomendaciones.
-- Explicaciones de aprendizaje.
+- Integración del Learning Engine.
+- Reutilización del aprendizaje.
+- Persistencia del conocimiento del usuario.
 
-Resultado
+### Resultado
 
-AURA aprende del comportamiento del usuario y reutiliza ese conocimiento para mejorar automáticamente su planificación y sus recomendaciones.
+AURA ahora es capaz de:
 
+- aprender del comportamiento del usuario;
+- consolidar ese aprendizaje en un Adaptive Profile;
+- persistir dicho perfil;
+- reutilizar el perfil para mejorar automáticamente la planificación;
+- reutilizar el perfil para mejorar las recomendaciones.
 
 ## Sprint 8
 
 ### Conversational Intelligence
 
-Objetivos
+### Objetivo
 
-- Explicar el perfil adaptativo.
+Permitir que AURA explique su razonamiento y su aprendizaje.
+
+### Funcionalidades
+
 - Explicar recomendaciones.
 - Explicar planificación.
+- Explicar el Adaptive Profile.
 - Mostrar evolución del aprendizaje.
 - Comparar perfiles.
-- Exponer aprendizaje mediante API.
+- Mostrar nivel de confianza.
+- Mejorar las respuestas conversacionales.
+
+
+---
+
+# Visión hacia v1.0
+
+Antes de la versión 1.0 el proyecto buscará completar:
+
+- Integraciones externas.
+- Evidencias automáticas de cumplimiento.
+- Simulación de planificación.
+- Inteligencia conversacional.
+- Evolución del Adaptive Profile.

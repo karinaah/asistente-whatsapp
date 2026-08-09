@@ -2,158 +2,300 @@
 
 ## Objetivos arquitectónicos
 
-La arquitectura de AURA debe permitir:
+La arquitectura de AURA busca construir un asistente de productividad inteligente que sea:
 
-- probar el dominio sin depender de FastAPI;
-- cambiar la base de datos sin reescribir el planner;
-- agregar proveedores externos sin acoplarlos al núcleo;
-- mantener decisiones de planificación explicables;
-- evolucionar gradualmente sin grandes reescrituras.
+- fácil de mantener;
+- fácil de probar;
+- explicable;
+- extensible;
+- desacoplado de proveedores externos.
 
-## Tecnologías actuales
+Para lograrlo, el dominio se mantiene independiente de FastAPI, SQLAlchemy y cualquier integración específica.
 
-- Python
+---
+
+# Principios de diseño
+
+AURA sigue los siguientes principios arquitectónicos:
+
+- Separación entre dominio, aplicación y persistencia.
+- Repository Pattern.
+- Service Layer.
+- Dependency Injection.
+- Modelos de dominio independientes.
+- Motores especializados por responsabilidad.
+- Reglas pequeñas y reutilizables.
+- Aprendizaje adaptativo desacoplado del resto del sistema.
+
+Cada componente debe tener una única responsabilidad y comunicarse mediante modelos de dominio bien definidos.
+
+---
+
+# Tecnologías
+
+## Backend
+
+- Python 3.11
 - FastAPI
 - SQLAlchemy
 - SQLite
+- Pydantic
+
+## Testing
+
 - Pytest
 
-## Patrones principales
+---
 
-- Repository Pattern
-- Dependency Injection
-- Separación entre dominio, servicios e infraestructura
-- Servicios pequeños con responsabilidades claras
+# Capas de la aplicación
 
-## Capas
+## Dominio
 
-### Dominio
+El dominio contiene los conceptos centrales de AURA.
 
-Contiene los conceptos centrales de AURA:
+Entre ellos:
 
 - Task
-- TaskContext
-- TimeBlock
-- AvailableSlot
 - ScheduledTask
 - PlanningRequest
 - PlanningResponse
-- ScoreBreakdown
+- TimeBlock
+- Recommendation
+- RecommendationReason
+- DecisionContext
+- HumanState
+- TaskExecution
+- AdaptiveProfile
 
-El dominio no debe depender de FastAPI, SQLAlchemy ni proveedores externos.
+El dominio no depende de FastAPI, SQLAlchemy ni de ninguna tecnología de infraestructura.
 
-### Servicios de aplicación
+---
 
-Coordinan los casos de uso:
+## Servicios de aplicación
 
+Los servicios implementan los casos de uso del sistema.
+
+Actualmente existen:
+
+- TaskService
 - PlannerService
-- TaskSorter
-- ScoringEngine
+- AdaptivePlanningService
+- DecisionEngine
+- LearningService
+- AdaptiveProfileService
+- TaskExecutionService
+- HumanStateService
+- RecommendationHistoryService
 
-Responsabilidades actuales:
+Los servicios coordinan la lógica del negocio sin acceder directamente a la base de datos.
 
-#### PlannerService
+---
 
-- coordinar la creación del plan;
-- encontrar espacios disponibles;
-- seleccionar slots;
-- crear la línea de tiempo;
-- gestionar tareas no programadas.
+## Persistencia
 
-#### TaskSorter
+La persistencia se implementa mediante Repository Pattern.
 
-- definir el orden previo de planificación.
+Los servicios nunca ejecutan consultas SQL directamente.
 
-#### ScoringEngine
-
-- evaluar slots;
-- calcular fragmentación;
-- evaluar preferencias;
-- evaluar deadlines;
-- producir ScoreBreakdown.
-
-### Persistencia
-
-Los repositorios abstraen el almacenamiento.
-
-Los servicios no deben ejecutar consultas SQL directamente.
+Flujo general:
 
 ```text
 Service
-   ↓
-Repository Interface
-   ↓
-SQLAlchemy Repository
-   ↓
-Database
-
-## Planner integrado con persistencia
-
-El planner puede generar planes usando tareas almacenadas en la base de datos.
-
-Flujo:
-
-```text
+    │
+    ▼
+Repository
+    │
+    ▼
+SQLAlchemy Model
+    │
+    ▼
 SQLite
-   ↓
-TaskRepository
-   ↓
-TaskService
-   ↓
-Task
-   ↓
-PlanningRequest
-   ↓
-PlannerService
+```
 
+Repositorios actuales:
 
+- TaskRepository
+- TaskExecutionRepository
+- HumanStateRepository
+- RecommendationHistoryRepository
+- AdaptiveProfileRepository
 
+---
 
-# Arquitectura
+# Motores principales
+
+AURA está organizado en motores independientes.
+
+Cada motor tiene una responsabilidad claramente definida.
 
 ## Planner Engine
 
-Genera el plan diario.
+Responsable de construir automáticamente el plan diario.
+
+Considera:
+
+- prioridad;
+- deadlines;
+- horarios preferidos;
+- bloques ocupados;
+- descansos;
+- contexto;
+- duración estimada;
+- Adaptive Profile.
+
+El planner nunca modifica las tareas originales.
+
+Cuando necesita ajustar una duración utiliza una copia temporal de la tarea.
+
+---
 
 ## Decision Engine
 
-Selecciona la mejor tarea.
+Responsable de recomendar la mejor tarea para realizar en un momento determinado.
+
+La recomendación se construye mediante reglas independientes.
+
+Actualmente existen reglas para:
+
+- prioridad;
+- deadlines;
+- contexto;
+- tiempo disponible;
+- energía;
+- enfoque;
+- estrés;
+- tareas vencidas;
+- preferencias horarias;
+- aprendizaje adaptativo.
+
+Cada regla aporta una puntuación y una explicación.
+
+El resultado final es una recomendación completamente explicable.
+
+---
 
 ## Learning Engine
 
-Analiza ejecuciones.
+Responsable de aprender del comportamiento real del usuario.
+
+Analiza las ejecuciones registradas y detecta patrones.
+
+Actualmente aprende:
+
+- precisión de estimaciones;
+- comportamiento por categoría;
+- productividad según energía;
+- hábitos generales.
+
+El resultado del aprendizaje es un Adaptive Profile.
+
+---
 
 ## Adaptive Profile Service
 
-Mantiene el conocimiento consolidado del usuario.
+Representa el conocimiento consolidado que AURA tiene sobre el usuario.
 
-## Repositories
+Su responsabilidad es:
 
-Persistencia.
+- reconstruir el perfil;
+- persistirlo;
+- recuperarlo;
+- ponerlo a disposición del Planner y del Decision Engine.
 
-## API
+Actualmente el perfil puede almacenar información como:
 
-Exposición REST.
+- multiplicadores de duración por categoría;
+- preferencia por tareas cortas con baja energía;
+- mejores condiciones conocidas de energía;
+- mejores condiciones conocidas de enfoque;
+- nivel de confianza del aprendizaje.
 
+---
 
+# Flujo de aprendizaje
 
-                AURA
+El aprendizaje sigue el siguiente ciclo:
 
-          Planner Engine
-                 ▲
-                 │
-AdaptiveProfileService
-                 ▲
-                 │
-         Learning Engine
-                 ▲
-                 │
-        TaskExecution
-                 │
-                 ▼
-          SQLite Database
-
-Decision Engine
-        ▲
+```text
+Task Execution
         │
-AdaptiveProfile
+        ▼
+Learning Engine
+        │
+        ▼
+Adaptive Profile
+        │
+        ▼
+SQLite
+```
+
+Cuando Planner o Decision Engine necesitan conocimiento adaptativo:
+
+```text
+SQLite
+      │
+      ▼
+Adaptive Profile Service
+      │
+      ▼
+Adaptive Profile
+      ├──────────────┐
+      ▼              ▼
+Planner Engine   Decision Engine
+```
+
+De esta forma ambos motores utilizan exactamente el mismo conocimiento del usuario.
+
+---
+
+# API
+
+FastAPI expone todos los casos de uso mediante una API REST.
+
+Actualmente la API incluye endpoints para:
+
+- tareas;
+- planificación;
+- recomendaciones;
+- historial de recomendaciones;
+- estado humano;
+- ejecuciones;
+- perfil adaptativo.
+
+La documentación interactiva está disponible mediante Swagger.
+
+---
+
+# Testing
+
+La arquitectura fue diseñada para facilitar las pruebas automatizadas.
+
+Actualmente existen pruebas para:
+
+- Planner Engine;
+- Decision Engine;
+- Learning Engine;
+- Adaptive Profile Service;
+- persistencia;
+- reglas individuales;
+- integración entre motores.
+
+Versión actual:
+
+**57 tests automatizados.**
+
+---
+
+# Visión
+
+AURA no busca ser únicamente un gestor de tareas.
+
+Su objetivo es convertirse en un asistente inteligente de productividad capaz de:
+
+- planificar;
+- recomendar;
+- aprender;
+- adaptarse;
+- explicar sus decisiones.
+
+Toda la arquitectura está diseñada para permitir que estas capacidades evolucionen de forma independiente sin comprometer la mantenibilidad del sistema.
