@@ -17,6 +17,11 @@ from app.services.estimation_adjustment_service import (
 from app.models.adaptive_profile import (
     AdaptiveProfile,
 )
+from app.models.planning_decision import PlanningDecision
+from app.models.planning_reason import (
+    PlanningReason,
+    PlanningReasonCode,
+)
 
 @dataclass
 class AvailableSlot:
@@ -24,6 +29,10 @@ class AvailableSlot:
     end_time: datetime
     preceding_break: TimeBlock | None = None
 
+@dataclass
+class PlannerExecutionResult:
+    response: PlanningResponse
+    decisions: list[PlanningDecision]
 
 class PlannerService:  
     def __init__(self):
@@ -33,7 +42,7 @@ class PlannerService:
             EstimationAdjustmentService()
         )
 
-    def create_plan(
+    def _plan(
         self,
         request: PlanningRequest,
         adaptive_profile: AdaptiveProfile | None = None,
@@ -82,6 +91,7 @@ class PlannerService:
         scheduled_tasks: list[ScheduledTask] = []
         unscheduled_tasks = []
         generated_breaks: list[TimeBlock] = []
+        planning_decisions: list[PlanningDecision] = []
 
         for task in ordered_tasks:
             task_date = (
@@ -148,13 +158,57 @@ class PlannerService:
                     selected_slot.preceding_break
                 )
 
-            scheduled_tasks.append(
-                ScheduledTask(
+
+            scheduled_task = ScheduledTask(
+                task=task,
+                start_time=task_start,
+                end_time=task_end,
+            )
+
+            scheduled_tasks.append(scheduled_task)
+
+            reasons: list[PlanningReason] = []
+
+            if (
+                task.preferred_start_time is not None
+                and task_start.time() == task.preferred_start_time
+            ):
+                reasons.append(
+                    PlanningReason(
+                        code=PlanningReasonCode.preferred_start_time,
+                        message=(
+                            "La tarea fue programada en "
+                            "su horario de inicio preferido."
+                        ),
+                    )
+                )
+
+            if adaptive_profile is not None:
+                multiplier = self._get_duration_multiplier(
                     task=task,
-                    start_time=task_start,
-                    end_time=task_end,
+                    profile=adaptive_profile,
+                )
+
+                if multiplier != 1.0:
+                    reasons.append(
+                        PlanningReason(
+                            code=PlanningReasonCode.adaptive_duration,
+                            message=(
+                                "La duración de la tarea fue ajustada "
+                                "según tu historial."
+                            ),
+                        )
+                    )
+
+            planning_decisions.append(
+                PlanningDecision(
+                    scheduled_task=scheduled_task,
+                    reasons=reasons,
                 )
             )
+
+
+
 
             current_time = task_end + timedelta(
                 minutes=request.break_minutes
@@ -167,11 +221,44 @@ class PlannerService:
             break_minutes=request.break_minutes,
         )
 
-        return PlanningResponse(
+
+        response = PlanningResponse(
             scheduled_tasks=scheduled_tasks,
             unscheduled_tasks=unscheduled_tasks,
             timeline=timeline,
         )
+
+        return PlannerExecutionResult(
+            response=response,
+            decisions=planning_decisions,
+        )
+
+
+    def create_plan(
+        self,
+        request: PlanningRequest,
+        adaptive_profile: AdaptiveProfile | None = None,
+    ) -> PlanningResponse:
+        result = self._plan(
+            request=request,
+            adaptive_profile=adaptive_profile,
+        )
+
+        return result.response
+
+
+    def explain_plan(
+        self,
+        request: PlanningRequest,
+        adaptive_profile: AdaptiveProfile | None = None,
+    ) -> list[PlanningDecision]:
+        result = self._plan(
+            request=request,
+            adaptive_profile=adaptive_profile,
+        )
+
+        return result.decisions
+
 
     def _choose_best_slot(
         self,
@@ -405,3 +492,21 @@ class PlannerService:
             )
 
         return adjusted_tasks
+    
+    def _get_duration_multiplier(
+        self,
+        task: Task,
+        profile: AdaptiveProfile,
+    ) -> float:
+        multipliers = {
+            "trabajo": profile.work_duration_multiplier,
+            "estudio": profile.study_duration_multiplier,
+            "personal": profile.personal_duration_multiplier,
+            "salud": profile.health_duration_multiplier,
+            "otro": profile.other_duration_multiplier,
+        }
+
+        return multipliers.get(
+            task.category.value,
+            1.0,
+        )    

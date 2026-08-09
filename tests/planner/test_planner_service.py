@@ -6,6 +6,12 @@ from app.services.planner_service import PlannerService
 from tests.factories.task_factory import make_task
 from tests.factories.time_block_factory import make_time_block
 from app.models.task import TaskContext
+from datetime import date, time
+
+from app.models.planning_reason import (
+    PlanningReasonCode,
+)
+from app.models.task import Task
 
 def test_single_task_is_scheduled_at_day_start():
     planner = PlannerService()
@@ -456,3 +462,39 @@ def test_plan_includes_all_tasks_when_context_is_not_provided():
     assert len(response.scheduled_tasks) == 2
     assert response.scheduled_tasks[0].task.title == "Preparar informe"
     assert response.scheduled_tasks[1].task.title == "Comprar comida"    
+
+
+def test_explain_plan_returns_preferred_start_reason():
+    planner = PlannerService()
+
+    task = Task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        category="trabajo",
+        context="trabajo",
+        preferred_start_time=time(hour=21),
+    )
+
+    request = PlanningRequest(
+        tasks=[task],
+        plan_date=date.fromisoformat("2026-08-10"),
+        day_start_hour=8,
+        day_end_hour=23,
+        break_minutes=0,
+        busy_blocks=[],
+        context="trabajo",
+    )
+
+    decisions = planner.explain_plan(request)
+
+    assert len(decisions) == 1
+
+    reason_codes = {
+        reason.code
+        for reason in decisions[0].reasons
+    }
+
+    assert (
+        PlanningReasonCode.preferred_start_time
+        in reason_codes
+    )    

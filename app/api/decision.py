@@ -8,19 +8,14 @@ from app.config.service_dependencies import (
     get_adaptive_profile_service,
     get_human_state_service,
     get_recommendation_history_service,
-    get_task_service,
 )
 from app.models.recommendation import (
     DecisionContext,
     Recommendation,
 )
-from app.models.schedule import (
-    PlanningFromDBRequest,
-    PlanningRequest,
-)
+
 from app.services.decision_engine import DecisionEngine
 from app.services.planner_service import PlannerService
-from app.services.task_service import TaskService
 from app.services.human_state_service import HumanStateService
 from app.services.recommendation_history_service import (
     RecommendationHistoryService,
@@ -28,16 +23,18 @@ from app.services.recommendation_history_service import (
 from app.services.adaptive_profile_service import (
     AdaptiveProfileService,
 )
-
+from app.services.planning_workflow_service import (
+    PlanningWorkflowService,
+)
+from app.models.schedule import PlanningFromDBRequest
 
 router = APIRouter(
     prefix="/decision",
     tags=["Decision"],
 )
 
-planner_service = PlannerService()
+planning_workflow_service = PlanningWorkflowService()
 decision_engine = DecisionEngine()
-
 
 @router.post(
     "/recommend",
@@ -46,7 +43,6 @@ decision_engine = DecisionEngine()
 def recommend_next_action(
     request: PlanningFromDBRequest,
     db: Session = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
     human_state_service: HumanStateService = Depends(
         get_human_state_service
     ),
@@ -57,21 +53,12 @@ def recommend_next_action(
     get_adaptive_profile_service
     ),  
 ) -> Recommendation | None:
-    tasks = task_service.get_plannable(db)
-
-    planning_request = PlanningRequest(
-        tasks=tasks,
-        plan_date=request.plan_date,
-        day_start_hour=request.day_start_hour,
-        day_end_hour=request.day_end_hour,
-        break_minutes=request.break_minutes,
-        busy_blocks=request.busy_blocks,
-        context=request.context,
+    plan = planning_workflow_service.create_plan_from_db(
+        db=db,
+        request=request,
     )
 
-    plan = planner_service.create_plan(
-        planning_request
-    )
+
 
     human_state = (
         request.human_state

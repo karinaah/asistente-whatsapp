@@ -1,41 +1,69 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.dependencies import get_db
-from app.services.adaptive_profile_explanation_service import (
-    AdaptiveProfileExplanationService,
-)
-from app.models.explanation import Explanation
-from app.models.schedule import PlanningFromDBRequest, PlanningRequest
-from app.services.decision_engine import DecisionEngine
-from app.services.human_state_service import HumanStateService
-from app.services.planner_service import PlannerService
-from app.services.recommendation_explanation_service import (
-    RecommendationExplanationService,
-)
-from app.services.task_service import TaskService
-from app.services.adaptive_profile_service import AdaptiveProfileService
 from app.config.service_dependencies import (
     get_adaptive_profile_service,
     get_human_state_service,
-    get_task_service,
 )
-from datetime import datetime
+from app.models.explanation import Explanation
 from app.models.recommendation import DecisionContext
+from app.models.schedule import PlanningFromDBRequest
+from app.services.adaptive_profile_explanation_service import (
+    AdaptiveProfileExplanationService,
+)
+from app.services.adaptive_profile_service import (
+    AdaptiveProfileService,
+)
+from app.services.decision_engine import DecisionEngine
+from app.services.human_state_service import HumanStateService
+from app.services.planning_workflow_service import (
+    PlanningWorkflowService,
+)
+from app.services.recommendation_explanation_service import (
+    RecommendationExplanationService,
+)
+from app.services.planning_explanation_service import (
+    PlanningExplanationService,
+)
+from app.models.schedule import (
+    PlanningFromDBRequest,
+    PlanningRequest,
+)
+
 
 router = APIRouter(
     prefix="/explanations",
     tags=["Explanations"],
 )
 
-service = AdaptiveProfileExplanationService()
+adaptive_profile_explanation_service = (
+    AdaptiveProfileExplanationService()
+)
 
+planning_workflow_service = (
+    PlanningWorkflowService()
+)
+
+decision_engine = DecisionEngine()
+
+recommendation_explanation_service = (
+    RecommendationExplanationService()
+)
+
+planning_explanation_service = (
+    PlanningExplanationService()
+)
 
 @router.get("/adaptive-profile")
 def explain_adaptive_profile(
     db: Session = Depends(get_db),
 ):
-    explanation = service.explain(db)
+    explanation = (
+        adaptive_profile_explanation_service.explain(db)
+    )
 
     if explanation is None:
         return {
@@ -47,6 +75,7 @@ def explain_adaptive_profile(
 
     return explanation
 
+
 @router.post(
     "/recommendation",
     response_model=Explanation | None,
@@ -54,7 +83,6 @@ def explain_adaptive_profile(
 def explain_recommendation(
     request: PlanningFromDBRequest,
     db: Session = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
     human_state_service: HumanStateService = Depends(
         get_human_state_service
     ),
@@ -62,20 +90,9 @@ def explain_recommendation(
         get_adaptive_profile_service
     ),
 ) -> Explanation | None:
-    tasks = task_service.get_plannable(db)
-
-    planning_request = PlanningRequest(
-        tasks=tasks,
-        plan_date=request.plan_date,
-        day_start_hour=request.day_start_hour,
-        day_end_hour=request.day_end_hour,
-        break_minutes=request.break_minutes,
-        busy_blocks=request.busy_blocks,
-        context=request.context,
-    )
-
-    plan = PlannerService().create_plan(
-        planning_request
+    plan = planning_workflow_service.create_plan_from_db(
+        db=db,
+        request=request,
     )
 
     human_state = (
@@ -96,13 +113,59 @@ def explain_recommendation(
         adaptive_profile=adaptive_profile,
     )
 
-    recommendation = DecisionEngine().recommend(
+    recommendation = decision_engine.recommend(
         decision_context
     )
 
     if recommendation is None:
         return None
 
-    return RecommendationExplanationService().build(
+    return recommendation_explanation_service.build(
         recommendation
     )
+
+
+@router.post(
+    "/planning",
+    response_model=list[Explanation],
+)
+def explain_planning(
+    request: PlanningFromDBRequest,
+    db: Session = Depends(get_db),
+) -> list[Explanation]:
+    tasks = (
+        planning_workflow_service.task_service
+        .get_plannable(db)
+    )
+
+    adaptive_profile = (
+        planning_workflow_service
+        .adaptive_profile_service
+        .get(db)
+    )
+
+    planning_request = PlanningRequest(
+        tasks=tasks,
+        plan_date=request.plan_date,
+        day_start_hour=request.day_start_hour,
+        day_end_hour=request.day_end_hour,
+        break_minutes=request.break_minutes,
+        busy_blocks=request.busy_blocks,
+        context=request.context,
+    )
+
+    decisions = (
+        planning_workflow_service
+        .planner_service
+        .explain_plan(
+            request=planning_request,
+            adaptive_profile=adaptive_profile,
+        )
+    )
+
+    return [
+        planning_explanation_service.build(
+            decision
+        )
+        for decision in decisions
+    ]
