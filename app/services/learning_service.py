@@ -1,4 +1,5 @@
 from app.models.adaptive_profile import AdaptiveProfile
+from app.models.learning_insight import LearningInsight
 from app.models.task_execution import TaskExecution
 from app.services.adaptive_profile_builder import (
     AdaptiveProfileBuilder,
@@ -45,3 +46,11 @@ class LearningService:
             estimation_insights=estimation_insights,
             productivity=productivity_insight,
         )
+    
+    def get_estimation_insights(
+        self,
+        executions: list[TaskExecution],
+    ) -> list[LearningInsight]:
+        return self.estimation_analyzer.analyze(
+            executions
+        )    

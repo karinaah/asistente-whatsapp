@@ -42,3 +42,39 @@ Fecha: Agosto 2026
 - Cobertura de Decision Engine.
 - Cobertura de Learning Engine.
 - Cobertura de Adaptive Profile.
+
+
+
+# Changelog
+
+## v0.9.0
+
+### Added
+
+- Explanation Engine.
+- PlanningExplanationService.
+- RecommendationExplanationService.
+- LearningExplanationService.
+- AdaptiveProfileExplanationService.
+- PlanningWorkflowService.
+- Endpoint para explicar la planificación.
+- Endpoint para explicar recomendaciones.
+- Endpoint para explicar el aprendizaje.
+- Endpoint para explicar el perfil adaptativo.
+
+### Changed
+
+- Refactorización del Planner para producir `PlanningDecision`.
+- Refactorización del flujo de planificación mediante `PlanningWorkflowService`.
+- Consolidación de un modelo unificado `Explanation`.
+
+### Improved
+
+- Arquitectura basada en modelos explicables.
+- Reutilización entre Planner y API.
+- Desacoplamiento entre motores y presentación.
+- Documentación de arquitectura completamente reescrita.
+
+### Tests
+
+- 64 tests passing.

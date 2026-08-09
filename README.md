@@ -1,12 +1,14 @@
 # AURA
 
-> Un asistente inteligente de productividad que planifica, recomienda y aprende del comportamiento del usuario.
+AURA es un asistente inteligente de productividad que ayuda a planificar tareas, recomendar qué hacer en cada momento, aprender del comportamiento del usuario y explicar de forma transparente cómo toma sus decisiones.
 
+Su arquitectura está basada en motores desacoplados, reglas explicables y aprendizaje adaptativo, priorizando mantenibilidad, extensibilidad y facilidad de prueba.
 ---
 
 # ¿Qué es AURA?
 
 AURA es un asistente de productividad diseñado para ayudar a las personas a organizar su tiempo de forma inteligente.
+
 
 A diferencia de un gestor de tareas tradicional, AURA no solo almacena tareas. También es capaz de:
 
@@ -20,57 +22,39 @@ Toda la lógica está basada en reglas explicables y componentes desacoplados, p
 
 ---
 
-# Características
-
-Actualmente AURA incluye:
+## Características
 
 - Planificación automática de tareas.
 - Priorización basada en reglas.
 - Gestión de deadlines.
 - Preferencias horarias.
-- Contextos de trabajo y vida personal.
+- Contextos de trabajo y personal.
 - Recomendación de la siguiente tarea.
-- Explicación detallada de las recomendaciones.
+- Explicación de recomendaciones.
 - Historial de recomendaciones.
 - Registro de ejecuciones reales.
 - Learning Engine.
-- Adaptive Profile persistente.
+- Perfil adaptativo persistente.
+- Ajuste automático de estimaciones.
 - Planificación adaptativa.
-- Recomendaciones adaptativas.
+- Explicación de la planificación.
+- Explicación del aprendizaje.
+- Explicación del perfil adaptativo.
 
 ---
 
-# Arquitectura
+## Arquitectura
 
-AURA está organizado como un conjunto de motores independientes, cada uno con una responsabilidad específica.
+AURA está organizado en cuatro motores principales:
 
-```text
-                     AURA
+- Planner Engine
+- Decision Engine
+- Learning Engine
+- Explanation Engine
 
-             ┌──────────────────┐
-             │  Planner Engine  │
-             └──────────────────┘
-                      ▲
-                      │
-             Adaptive Profile
-                      ▲
-                      │
-             ┌──────────────────┐
-             │ Learning Engine  │
-             └──────────────────┘
-                      ▲
-                      │
-              Task Executions
-                      │
-                      ▼
-                  SQLite
+Cada motor tiene una responsabilidad única y se comunica mediante modelos de dominio explícitos.
 
-             ┌──────────────────┐
-             │ Decision Engine  │
-             └──────────────────┘
-```
-
-Esta separación permite que cada motor evolucione de forma independiente, facilitando el mantenimiento, las pruebas y la incorporación de nuevas funcionalidades.
+La lógica de negocio permanece desacoplada de FastAPI, SQLAlchemy y de cualquier proveedor externo.
 
 
 ---
@@ -262,27 +246,17 @@ Toda la documentación interactiva está disponible mediante Swagger.
 
 ---
 
-# Estado del proyecto
+## Estado del proyecto
 
-**Versión actual**
+Versión actual: **v0.9.0**
 
-**v0.8.0 — Adaptive Intelligence**
-
-Actualmente AURA implementa:
+Estado del desarrollo:
 
 - ✅ Planner Engine
 - ✅ Decision Engine
 - ✅ Learning Engine
-- ✅ Adaptive Profile persistente
-- ✅ Planificación adaptativa
-- ✅ Recomendaciones adaptativas
-- ✅ Historial de recomendaciones
-- ✅ Registro de ejecuciones
-- ✅ API REST documentada con Swagger
-- ✅ Suite de pruebas automatizadas
-
-El proyecto continúa en desarrollo activo con foco en mejorar la inteligencia adaptativa y la experiencia conversacional.
-
+- ✅ Explanation Engine
+- 🚧 Conversational Assistant (Sprint 9)
 
 ---
 

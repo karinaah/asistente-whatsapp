@@ -32,6 +32,13 @@ from app.models.schedule import (
     PlanningFromDBRequest,
     PlanningRequest,
 )
+from app.services.learning_explanation_service import (
+    LearningExplanationService,
+)
+from app.services.learning_service import LearningService
+from app.services.task_execution_service import (
+    TaskExecutionService,
+)
 
 
 router = APIRouter(
@@ -56,6 +63,16 @@ recommendation_explanation_service = (
 planning_explanation_service = (
     PlanningExplanationService()
 )
+learning_service = LearningService()
+
+learning_explanation_service = (
+    LearningExplanationService()
+)
+
+task_execution_service = (
+    TaskExecutionService()
+)
+
 
 @router.get("/adaptive-profile")
 def explain_adaptive_profile(
@@ -169,3 +186,23 @@ def explain_planning(
         )
         for decision in decisions
     ]
+
+
+@router.get(
+    "/learning",
+    response_model=Explanation,
+)
+def explain_learning(
+    db: Session = Depends(get_db),
+) -> Explanation:
+    executions = (
+        task_execution_service.get_all_for_learning(db)
+    )
+
+    insights = learning_service.get_estimation_insights(
+        executions
+    )
+
+    return learning_explanation_service.build(
+        insights
+    )

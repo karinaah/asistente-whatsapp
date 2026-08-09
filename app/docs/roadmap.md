@@ -188,24 +188,26 @@ AURA ahora es capaz de:
 - reutilizar el perfil para mejorar automáticamente la planificación;
 - reutilizar el perfil para mejorar las recomendaciones.
 
-## Sprint 8
+# Sprint 8 ✅ Finalizado
 
-### Conversational Intelligence
+## Explainable Intelligence
 
-### Objetivo
+### Objetivos
 
-Permitir que AURA explique su razonamiento y su aprendizaje.
+- Modelo unificado de explicaciones.
+- Explicación del perfil adaptativo.
+- Explicación de recomendaciones.
+- Explicación de la planificación.
+- Explicación del aprendizaje.
+- Refactorización del Planner para producir decisiones explicables.
+- Planning Workflow compartido.
+- Endpoints de explicaciones.
 
-### Funcionalidades
+### Resultado
 
-- Explicar recomendaciones.
-- Explicar planificación.
-- Explicar el Adaptive Profile.
-- Mostrar evolución del aprendizaje.
-- Comparar perfiles.
-- Mostrar nivel de confianza.
-- Mejorar las respuestas conversacionales.
+AURA ahora puede explicar de forma transparente cómo planifica, recomienda y aprende.
 
+Cada motor genera un modelo explícito que posteriormente es transformado en explicaciones naturales mediante servicios especializados, manteniendo desacoplada la lógica de negocio de la presentación.
 
 ---
 

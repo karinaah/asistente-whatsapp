@@ -1,33 +1,56 @@
 # AURA — Arquitectura
 
-## Objetivos arquitectónicos
+## Filosofía
 
-La arquitectura de AURA busca construir un asistente de productividad inteligente que sea:
+AURA está diseñado como un asistente inteligente de productividad compuesto por motores independientes.
 
-- fácil de mantener;
-- fácil de probar;
-- explicable;
-- extensible;
-- desacoplado de proveedores externos.
+Cada motor tiene una única responsabilidad y produce modelos de dominio explícitos que pueden ser reutilizados por otros componentes del sistema.
 
-Para lograrlo, el dominio se mantiene independiente de FastAPI, SQLAlchemy y cualquier integración específica.
+La arquitectura prioriza:
+
+- mantenibilidad;
+- explicabilidad;
+- extensibilidad;
+- facilidad de prueba;
+- desacoplamiento entre dominio e infraestructura.
+
+---
+
+# Objetivos arquitectónicos
+
+La arquitectura de AURA debe permitir:
+
+- probar el dominio sin depender de FastAPI;
+- cambiar la persistencia sin modificar la lógica del negocio;
+- incorporar proveedores externos sin afectar el núcleo;
+- mantener decisiones completamente explicables;
+- aprender automáticamente del comportamiento del usuario;
+- evolucionar mediante componentes independientes.
 
 ---
 
 # Principios de diseño
 
-AURA sigue los siguientes principios arquitectónicos:
+AURA utiliza una combinación de principios y patrones arquitectónicos.
 
-- Separación entre dominio, aplicación y persistencia.
-- Repository Pattern.
-- Service Layer.
-- Dependency Injection.
-- Modelos de dominio independientes.
-- Motores especializados por responsabilidad.
-- Reglas pequeñas y reutilizables.
-- Aprendizaje adaptativo desacoplado del resto del sistema.
+## Principios
 
-Cada componente debe tener una única responsabilidad y comunicarse mediante modelos de dominio bien definidos.
+- Responsabilidad única.
+- Bajo acoplamiento.
+- Alta cohesión.
+- Explicabilidad por diseño.
+- Dominio independiente de la infraestructura.
+- Arquitectura incremental.
+
+## Patrones
+
+- Repository Pattern
+- Service Layer
+- Dependency Injection
+- Domain Models
+- Rule-based Engines
+- Explainable Models
+- Workflow Services
 
 ---
 
@@ -47,33 +70,35 @@ Cada componente debe tener una única responsabilidad y comunicarse mediante mod
 
 ---
 
-# Capas de la aplicación
+# Arquitectura por capas
 
 ## Dominio
 
-El dominio contiene los conceptos centrales de AURA.
+El dominio contiene exclusivamente conceptos del negocio.
 
-Entre ellos:
+No depende de FastAPI, SQLAlchemy ni de ninguna otra tecnología.
+
+Principales modelos:
 
 - Task
 - ScheduledTask
 - PlanningRequest
 - PlanningResponse
-- TimeBlock
+- PlanningDecision
+- PlanningReason
 - Recommendation
 - RecommendationReason
-- DecisionContext
 - HumanState
 - TaskExecution
+- LearningInsight
 - AdaptiveProfile
-
-El dominio no depende de FastAPI, SQLAlchemy ni de ninguna tecnología de infraestructura.
+- Explanation
 
 ---
 
 ## Servicios de aplicación
 
-Los servicios implementan los casos de uso del sistema.
+Los servicios coordinan los casos de uso.
 
 Actualmente existen:
 
@@ -83,21 +108,19 @@ Actualmente existen:
 - DecisionEngine
 - LearningService
 - AdaptiveProfileService
-- TaskExecutionService
 - HumanStateService
 - RecommendationHistoryService
-
-Los servicios coordinan la lógica del negocio sin acceder directamente a la base de datos.
+- TaskExecutionService
 
 ---
 
 ## Persistencia
 
-La persistencia se implementa mediante Repository Pattern.
+La persistencia está completamente desacoplada mediante Repository Pattern.
 
 Los servicios nunca ejecutan consultas SQL directamente.
 
-Flujo general:
+Flujo:
 
 ```text
 Service
@@ -106,7 +129,7 @@ Service
 Repository
     │
     ▼
-SQLAlchemy Model
+SQLAlchemy
     │
     ▼
 SQLite
@@ -122,40 +145,53 @@ Repositorios actuales:
 
 ---
 
-# Motores principales
+## Workflow Services
 
-AURA está organizado en motores independientes.
+Los workflows reutilizan lógica de aplicación entre distintos endpoints.
 
-Cada motor tiene una responsabilidad claramente definida.
+Actualmente:
+
+- PlanningWorkflowService
+
+Su objetivo es evitar duplicación y mantener la API desacoplada del dominio.
+
+---
+
+# Motores
+
+AURA se compone de cuatro motores principales.
 
 ## Planner Engine
 
-Responsable de construir automáticamente el plan diario.
+Responsable de construir automáticamente un plan diario.
 
 Considera:
 
 - prioridad;
 - deadlines;
-- horarios preferidos;
+- preferencias horarias;
 - bloques ocupados;
 - descansos;
 - contexto;
 - duración estimada;
 - Adaptive Profile.
 
-El planner nunca modifica las tareas originales.
+Produce:
 
-Cuando necesita ajustar una duración utiliza una copia temporal de la tarea.
+- PlanningResponse
+- PlanningDecision
+
+Las decisiones de planificación permiten explicar posteriormente por qué cada tarea fue ubicada en un determinado horario.
 
 ---
 
 ## Decision Engine
 
-Responsable de recomendar la mejor tarea para realizar en un momento determinado.
+Responsable de recomendar la mejor tarea para ejecutar.
 
-La recomendación se construye mediante reglas independientes.
+Utiliza un conjunto de reglas independientes.
 
-Actualmente existen reglas para:
+Actualmente considera:
 
 - prioridad;
 - deadlines;
@@ -168,91 +204,171 @@ Actualmente existen reglas para:
 - preferencias horarias;
 - aprendizaje adaptativo.
 
-Cada regla aporta una puntuación y una explicación.
+Produce:
 
-El resultado final es una recomendación completamente explicable.
+- Recommendation
+- RecommendationReason
+
+Todas las recomendaciones son completamente explicables.
 
 ---
 
 ## Learning Engine
 
-Responsable de aprender del comportamiento real del usuario.
+Responsable de aprender automáticamente del comportamiento del usuario.
 
-Analiza las ejecuciones registradas y detecta patrones.
+Analiza:
 
-Actualmente aprende:
-
-- precisión de estimaciones;
+- duración estimada;
+- duración real;
 - comportamiento por categoría;
 - productividad según energía;
 - hábitos generales.
 
-El resultado del aprendizaje es un Adaptive Profile.
+Produce:
+
+- LearningInsight
+- AdaptiveProfile
+
+El conocimiento aprendido es reutilizado por el Planner y el Decision Engine.
 
 ---
 
-## Adaptive Profile Service
+## Explanation Engine
 
-Representa el conocimiento consolidado que AURA tiene sobre el usuario.
+Responsable de transformar el conocimiento interno del sistema en explicaciones naturales.
 
-Su responsabilidad es:
+Actualmente incluye:
+
+- AdaptiveProfileExplanationService
+- RecommendationExplanationService
+- PlanningExplanationService
+- LearningExplanationService
+
+Todos producen el modelo unificado:
+
+- Explanation
+
+De esta manera la lógica del negocio permanece separada de la presentación.
+
+---
+
+# Servicios compartidos
+
+## AdaptiveProfileService
+
+Gestiona el conocimiento consolidado del usuario.
+
+Responsabilidades:
 
 - reconstruir el perfil;
 - persistirlo;
 - recuperarlo;
-- ponerlo a disposición del Planner y del Decision Engine.
+- entregarlo a los motores que lo requieren.
 
-Actualmente el perfil puede almacenar información como:
+Actualmente almacena:
 
-- multiplicadores de duración por categoría;
-- preferencia por tareas cortas con baja energía;
-- mejores condiciones conocidas de energía;
-- mejores condiciones conocidas de enfoque;
+- multiplicadores de duración;
+- preferencias aprendidas;
+- mejores condiciones conocidas;
 - nivel de confianza del aprendizaje.
 
 ---
 
-# Flujo de aprendizaje
+# Flujos principales
 
-El aprendizaje sigue el siguiente ciclo:
+## Flujo de aprendizaje
 
 ```text
-Task Execution
+TaskExecution
         │
         ▼
 Learning Engine
         │
         ▼
-Adaptive Profile
+AdaptiveProfile
         │
         ▼
 SQLite
 ```
 
-Cuando Planner o Decision Engine necesitan conocimiento adaptativo:
+---
+
+## Flujo adaptativo
 
 ```text
 SQLite
       │
       ▼
-Adaptive Profile Service
+AdaptiveProfileService
       │
       ▼
-Adaptive Profile
-      ├──────────────┐
-      ▼              ▼
+AdaptiveProfile
+      ├───────────────┐
+      ▼               ▼
 Planner Engine   Decision Engine
 ```
 
-De esta forma ambos motores utilizan exactamente el mismo conocimiento del usuario.
+---
+
+## Flujo de explicaciones
+
+```text
+Planner Engine
+        │
+        ▼
+PlanningDecision
+        │
+        ▼
+PlanningExplanationService
+        │
+        ▼
+Explanation
+```
+
+```text
+Decision Engine
+        │
+        ▼
+Recommendation
+        │
+        ▼
+RecommendationExplanationService
+        │
+        ▼
+Explanation
+```
+
+```text
+Learning Engine
+        │
+        ▼
+LearningInsight
+        │
+        ▼
+LearningExplanationService
+        │
+        ▼
+Explanation
+```
+
+```text
+AdaptiveProfile
+        │
+        ▼
+AdaptiveProfileExplanationService
+        │
+        ▼
+Explanation
+```
 
 ---
 
 # API
 
-FastAPI expone todos los casos de uso mediante una API REST.
+FastAPI expone los casos de uso mediante una API REST.
 
-Actualmente la API incluye endpoints para:
+Actualmente existen endpoints para:
 
 - tareas;
 - planificación;
@@ -260,29 +376,30 @@ Actualmente la API incluye endpoints para:
 - historial de recomendaciones;
 - estado humano;
 - ejecuciones;
-- perfil adaptativo.
+- aprendizaje;
+- perfil adaptativo;
+- explicaciones.
 
-La documentación interactiva está disponible mediante Swagger.
+La documentación interactiva se genera automáticamente mediante Swagger.
 
 ---
 
 # Testing
 
-La arquitectura fue diseñada para facilitar las pruebas automatizadas.
+La arquitectura fue diseñada para facilitar pruebas unitarias e integración.
 
 Actualmente existen pruebas para:
 
 - Planner Engine;
 - Decision Engine;
 - Learning Engine;
-- Adaptive Profile Service;
+- Adaptive Profile;
+- servicios de explicación;
 - persistencia;
 - reglas individuales;
 - integración entre motores.
 
-Versión actual:
-
-**57 tests automatizados.**
+**64 tests automatizados.**
 
 ---
 
@@ -290,12 +407,12 @@ Versión actual:
 
 AURA no busca ser únicamente un gestor de tareas.
 
-Su objetivo es convertirse en un asistente inteligente de productividad capaz de:
+Su objetivo es convertirse en un asistente inteligente capaz de:
 
 - planificar;
 - recomendar;
 - aprender;
 - adaptarse;
-- explicar sus decisiones.
+- explicar cada decisión que toma.
 
-Toda la arquitectura está diseñada para permitir que estas capacidades evolucionen de forma independiente sin comprometer la mantenibilidad del sistema.
+Cada capacidad evoluciona mediante motores independientes, permitiendo que el sistema crezca sin comprometer la mantenibilidad ni la claridad de su arquitectura.
