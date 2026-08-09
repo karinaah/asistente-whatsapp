@@ -147,15 +147,39 @@ Repositorios actuales:
 
 ## Workflow Services
 
-Los workflows reutilizan lógica de aplicación entre distintos endpoints.
+Los workflows encapsulan casos de uso completos reutilizando múltiples servicios de aplicación.
+
+Su objetivo es ofrecer una única interfaz para operaciones complejas, evitando que los endpoints o el Assistant conozcan los detalles internos de los motores.
 
 Actualmente:
 
 - PlanningWorkflowService
+- RecommendationWorkflowService
 
-Su objetivo es evitar duplicación y mantener la API desacoplada del dominio.
 
 ---
+
+## Assistant Layer
+
+La Assistant Layer proporciona una interfaz conversacional unificada sobre los distintos motores de AURA.
+
+Su responsabilidad consiste en interpretar la intención del usuario, seleccionar el caso de uso adecuado y orquestar los distintos Workflow Services y motores del sistema.
+
+Actualmente incluye:
+
+- AssistantChatService
+- IntentDetectionService
+
+Las principales intenciones soportadas son:
+
+- planificación;
+- recomendaciones;
+- aprendizaje;
+- explicaciones.
+
+Esta capa desacopla la interacción con el usuario de la lógica de negocio, permitiendo que los motores evolucionen de forma independiente.
+---
+
 
 # Motores
 
@@ -379,8 +403,9 @@ Actualmente existen endpoints para:
 - aprendizaje;
 - perfil adaptativo;
 - explicaciones.
+- asistente conversacional.
 
-La documentación interactiva se genera automáticamente mediante Swagger.
+El endpoint `/assistant/chat` constituye la principal interfaz conversacional del sistema y reutiliza los motores existentes mediante la Assistant Layer.
 
 ---
 
@@ -399,7 +424,7 @@ Actualmente existen pruebas para:
 - reglas individuales;
 - integración entre motores.
 
-**64 tests automatizados.**
+**74 tests automatizados.**
 
 ---
 
@@ -415,4 +440,32 @@ Su objetivo es convertirse en un asistente inteligente capaz de:
 - adaptarse;
 - explicar cada decisión que toma.
 
-Cada capacidad evoluciona mediante motores independientes, permitiendo que el sistema crezca sin comprometer la mantenibilidad ni la claridad de su arquitectura.
+La interacción con el usuario se realiza mediante una capa conversacional que reutiliza estos motores, permitiendo ofrecer una experiencia unificada sin acoplar la interfaz a la lógica del negocio.
+
+## Flujo conversacional
+
+```text
+Usuario
+      │
+      ▼
+AssistantChatService
+      │
+      ▼
+IntentDetectionService
+      │
+      ├───────────────┬───────────────┬───────────────┐
+      ▼               ▼               ▼               ▼
+Planning        Recommendation    Learning     Explanation
+Workflow         Workflow
+      │               │
+      └───────────────┴───────────────┐
+                                      ▼
+                              AssistantResponse
+
+# 7. Servicios de aplicación
+
+Yo agregaría:
+
+```markdown
+- AssistantChatService
+- IntentDetectionService                              

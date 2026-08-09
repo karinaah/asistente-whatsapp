@@ -47,34 +47,32 @@ Fecha: Agosto 2026
 
 # Changelog
 
-## v0.9.0
+# v0.9.0
 
-### Added
+## Added
 
-- Explanation Engine.
-- PlanningExplanationService.
-- RecommendationExplanationService.
-- LearningExplanationService.
-- AdaptiveProfileExplanationService.
-- PlanningWorkflowService.
-- Endpoint para explicar la planificación.
-- Endpoint para explicar recomendaciones.
-- Endpoint para explicar el aprendizaje.
-- Endpoint para explicar el perfil adaptativo.
+- AssistantChatService
+- IntentDetectionService
+- RecommendationWorkflowService
+- Conversational endpoint (`/assistant/chat`)
+- Conversational planning
+- Conversational recommendations
+- Conversational learning
+- Conversational explanations
 
-### Changed
+## Changed
 
-- Refactorización del Planner para producir `PlanningDecision`.
-- Refactorización del flujo de planificación mediante `PlanningWorkflowService`.
-- Consolidación de un modelo unificado `Explanation`.
+- Planning logic moved to PlanningWorkflowService
+- Recommendation logic moved to RecommendationWorkflowService
+- Assistant architecture reorganized
+- Improved workflow reuse
 
-### Improved
+## Testing
 
-- Arquitectura basada en modelos explicables.
-- Reutilización entre Planner y API.
-- Desacoplamiento entre motores y presentación.
-- Documentación de arquitectura completamente reescrita.
+- Added unit tests for AssistantChatService
+- Improved test isolation using mocks
 
-### Tests
+## Architecture
 
-- 64 tests passing.
+- Introduced Assistant Layer
+- Added conversational orchestration

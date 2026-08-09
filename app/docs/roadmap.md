@@ -211,6 +211,28 @@ Cada motor genera un modelo explícito que posteriormente es transformado en exp
 
 ---
 
+# Sprint 9 ✅ Finalizado
+
+## Conversational Assistant
+
+### Objetivos
+
+- Conversaciones naturales con AURA.
+- Memoria conversacional.
+- Explicaciones contextualizadas.
+- Consultas sobre planificación.
+- Consultas sobre aprendizaje.
+- Consultas sobre productividad.
+- Integración del Assistant con Planner, Decision y Learning Engine.
+
+
+# Sprint 10
+
+- [ ] Conversational memory
+- [ ] LLM integration
+- [ ] Context-aware conversations
+- [ ] Smarter responses
+
 # Visión hacia v1.0
 
 Antes de la versión 1.0 el proyecto buscará completar:

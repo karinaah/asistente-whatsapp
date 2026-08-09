@@ -1,29 +1,22 @@
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+
+![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
+
+![Tests](https://img.shields.io/badge/tests-74%20passing-success)
+
+![Version](https://img.shields.io/badge/version-v0.9.0-orange)
+
 # AURA
 
-AURA es un asistente inteligente de productividad que ayuda a planificar tareas, recomendar qué hacer en cada momento, aprender del comportamiento del usuario y explicar de forma transparente cómo toma sus decisiones.
+AURA es un asistente inteligente de productividad que planifica, recomienda, aprende y explica sus decisiones mediante una interfaz conversacional.
 
 Su arquitectura está basada en motores desacoplados, reglas explicables y aprendizaje adaptativo, priorizando mantenibilidad, extensibilidad y facilidad de prueba.
 ---
 
-# ¿Qué es AURA?
-
-AURA es un asistente de productividad diseñado para ayudar a las personas a organizar su tiempo de forma inteligente.
-
-
-A diferencia de un gestor de tareas tradicional, AURA no solo almacena tareas. También es capaz de:
-
-- generar planes diarios automáticamente;
-- recomendar la mejor tarea para realizar en cada momento;
-- explicar el motivo de cada recomendación;
-- aprender del comportamiento del usuario;
-- adaptar futuras planificaciones según la experiencia acumulada.
-
-Toda la lógica está basada en reglas explicables y componentes desacoplados, priorizando transparencia, mantenibilidad y facilidad de prueba.
-
----
-
 ## Características
 
+- Interfaz conversacional mediante Assistant Chat.
+- Detección automática de intención.
 - Planificación automática de tareas.
 - Priorización basada en reglas.
 - Gestión de deadlines.
@@ -45,8 +38,11 @@ Toda la lógica está basada en reglas explicables y componentes desacoplados, p
 
 ## Arquitectura
 
-AURA está organizado en cuatro motores principales:
+La arquitectura de AURA está compuesta por una capa conversacional que orquesta varios motores especializados.
 
+Actualmente incluye:
+
+- Assistant Layer
 - Planner Engine
 - Decision Engine
 - Learning Engine
@@ -102,7 +98,7 @@ Actualmente aprende:
 
 ---
 
-## Adaptive Profile Service
+## Adaptive Profile 
 
 Consolida el aprendizaje generado por el Learning Engine en un único perfil persistente.
 
@@ -220,11 +216,18 @@ pytest -v
 
 Estado actual:
 
-- 57 tests automáticos.
+- 74 tests automáticos.
 - Tests unitarios.
 - Tests de integración.
-- Cobertura de Planner, Decision, Learning y Adaptive Profile.
+Cobertura de:
 
+- Planner Engine
+- Decision Engine
+- Learning Engine
+- Explanation Engine
+- Assistant Layer
+- Workflows
+- Persistencia
 
 ---
 
@@ -240,6 +243,7 @@ Entre los principales endpoints se encuentran:
 - Historial de recomendaciones.
 - Registro de ejecuciones.
 - Adaptive Profile.
+- Assistant Chat.
 
 Toda la documentación interactiva está disponible mediante Swagger.
 
@@ -249,14 +253,21 @@ Toda la documentación interactiva está disponible mediante Swagger.
 ## Estado del proyecto
 
 Versión actual: **v0.9.0**
-
+Objetivo actual: alcanzar la primera versión estable (v1.0.0) mediante la incorporación de memoria conversacional, integración con modelos de lenguaje e integraciones externas.
 Estado del desarrollo:
 
-- ✅ Planner Engine
-- ✅ Decision Engine
-- ✅ Learning Engine
-- ✅ Explanation Engine
-- 🚧 Conversational Assistant (Sprint 9)
+
+✅ Planner Engine
+
+✅ Decision Engine
+
+✅ Learning Engine
+
+✅ Explanation Engine
+
+✅ Assistant Layer
+
+🚧 Sprint 10
 
 ---
 
@@ -266,7 +277,11 @@ Las próximas versiones estarán enfocadas en:
 
 - mejorar las explicaciones del aprendizaje;
 - enriquecer el Adaptive Profile;
-- incorporar inteligencia conversacional;
+- memoria conversacional;
+- integración con LLM;
+- contexto persistente;
+- integraciones externas;
+- optimización del aprendizaje adaptativo.
 - ampliar las integraciones externas;
 - continuar aumentando la cobertura de pruebas.
 
@@ -296,3 +311,17 @@ Cada recomendación debe ser:
 - basada en el comportamiento real del usuario.
 
 El objetivo no es reemplazar las decisiones del usuario, sino ofrecer recomendaciones fundamentadas que evolucionen con el tiempo.
+
+
+                    AURA
+
+            Assistant Layer
+                    │
+        Intent Detection Service
+                    │
+      ┌─────────────┼─────────────┐
+      ▼             ▼             ▼
+ Planner      Recommendation   Learning
+                    │
+                    ▼
+             Explanation Engine
