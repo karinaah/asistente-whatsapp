@@ -21,7 +21,9 @@ from app.services.decision_rules.stress_rule import StressRule
 from app.services.recommendation_summary_service import (
     RecommendationSummaryService,
 )
-
+from app.services.decision_rules.adaptive_energy_rule import (
+    AdaptiveEnergyRule,
+)
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -35,6 +37,7 @@ class DecisionEngine:
             EnergyRule(),
             FocusRule(),
             StressRule(),
+            AdaptiveEnergyRule(),
         ]
 
         self.summary_service = (

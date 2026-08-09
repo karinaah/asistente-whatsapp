@@ -9,6 +9,7 @@ from app.models.schedule import (
 )
 from app.models.task import Task, TaskContext
 from app.models.human_state import HumanState
+from app.models.adaptive_profile import AdaptiveProfile
 
 class RecommendationReasonCode(str, Enum):
     high_priority = "high_priority"
@@ -21,6 +22,7 @@ class RecommendationReasonCode(str, Enum):
     energy_match = "energy_match"
     focus_match = "focus_match"
     high_stress_penalty = "high_stress_penalty"
+    adaptive_low_energy_penalty = "adaptive_low_energy_penalty"
 
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode
@@ -36,6 +38,7 @@ class DecisionContext(BaseModel):
         ge=0,
     )
     human_state: HumanState | None = None   
+    adaptive_profile: AdaptiveProfile | None = None
 
 class Recommendation(BaseModel):
     task: Task

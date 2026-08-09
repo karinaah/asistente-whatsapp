@@ -10,3 +10,4 @@ class DecisionRuleWeights:
     ENERGY_MATCH = 40.0
     FOCUS_MATCH = 35.0
     HIGH_STRESS_PENALTY = -45.0
+    ADAPTIVE_LOW_ENERGY_PENALTY = -30.0

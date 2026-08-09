@@ -16,6 +16,7 @@ from app.models.human_state import (
     HumanState,
     StressLevel,
 )
+from app.models.adaptive_profile import AdaptiveProfile
 
 def test_recommends_active_task():
     engine = DecisionEngine()
@@ -725,3 +726,62 @@ def test_recommendation_summary_groups_reasons_naturally():
     assert "coincide con tu contexto actual" in recommendation.summary
     assert "tu nivel de energía es adecuado" in recommendation.summary
     assert "tu nivel de enfoque es adecuado" in recommendation.summary    
+
+
+def test_adaptive_profile_penalizes_long_task_when_energy_is_low():
+    engine = DecisionEngine()
+
+    task = make_task(
+        title="Preparar presentación",
+        estimated_minutes=90,
+        effort="alto",
+        focus_demand="alto",
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-08T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-08T11:30:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=datetime.fromisoformat(
+            "2026-08-08T10:15:00"
+        ),
+        plan=plan,
+        human_state=HumanState(
+            energy=EnergyLevel.low,
+            focus=FocusLevel.medium,
+            stress=StressLevel.low,
+        ),
+        adaptive_profile=AdaptiveProfile(
+            generated_from_executions=10,
+            prefers_short_tasks_when_low_energy=True,
+            confidence=0.5,
+        ),
+    )
+
+    recommendation = engine.recommend(context)
+
+    assert recommendation is not None
+    assert recommendation.score == 70.0
+
+    reason_codes = {
+        reason.code
+        for reason in recommendation.reasons
+    }
+
+    assert (
+        RecommendationReasonCode.adaptive_low_energy_penalty
+        in reason_codes
+    )    
