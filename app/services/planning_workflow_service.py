@@ -79,3 +79,27 @@ class PlanningWorkflowService:
             request=planning_request,
             adaptive_profile=adaptive_profile,
         )    
+    
+    def create_plan_with_decisions_from_db(
+        self,
+        db: Session,
+        request: PlanningFromDBRequest,
+    ):
+        tasks = self.task_service.get_plannable(db)
+
+        planning_request = self.build_planning_request(
+            tasks=tasks,
+            request=request,
+        )
+
+        adaptive_profile = (
+            self.adaptive_profile_service.get(db)
+        )
+
+        return (
+            self.planner_service
+            .create_plan_with_decisions(
+                request=planning_request,
+                adaptive_profile=adaptive_profile,
+            )
+        )    

@@ -32,6 +32,9 @@ import json
 from app.services.recommendation_history_service import (
     RecommendationHistoryService,
 )
+from app.services.conversation_memory_service import (
+    ConversationMemoryService,
+)
 
 class AssistantChatService:
     def __init__(self) -> None:
@@ -61,6 +64,9 @@ class AssistantChatService:
         self.recommendation_history_service = (
             RecommendationHistoryService()
         )
+        self.conversation_memory_service = (
+            ConversationMemoryService()
+        )
 
     def chat(
         self,
@@ -69,6 +75,9 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         intent = self.intent_detector.detect(
             request.message
+        )
+        self.conversation_memory_service.set_last_intent(
+            intent
         )
 
         if intent == AssistantIntent.planning:
@@ -116,15 +125,19 @@ class AssistantChatService:
             human_state=request.human_state,
         )
 
-        decisions = (
+        result = (
             self.planning_workflow_service
-            .explain_plan_from_db(
+            .create_plan_with_decisions_from_db(
                 db=db,
                 request=planning_request,
             )
         )
 
+        self.conversation_memory_service.set_last_plan(
+            result.response
+        )
 
+        decisions = result.decisions
 
         if not decisions:
             return AssistantChatResponse(
@@ -183,6 +196,10 @@ class AssistantChatService:
                 )
             )
 
+        self.conversation_memory_service.set_last_recommendation(
+            recommendation
+        )
+
         answer = (
             recommendation.summary
             or (
@@ -233,6 +250,31 @@ class AssistantChatService:
         db: Session,
         request: AssistantChatRequest,
     ) -> AssistantChatResponse:
+
+        # Primero intenta usar la memoria conversacional
+        context = (
+            self.conversation_memory_service
+            .get_context()
+        )
+
+        if context.last_recommendation is not None:
+            recommendation = (
+                context.last_recommendation
+            )
+
+            answer = (
+                recommendation.summary
+                or (
+                    f"Te recomendé "
+                    f"{recommendation.task.title}."
+                )
+            )
+
+            return AssistantChatResponse(
+                answer=answer
+            )
+
+        # Si no hay memoria, usa el historial (fallback)
         latest = (
             self.recommendation_history_service
             .get_latest(db)
@@ -255,7 +297,6 @@ class AssistantChatService:
             for reason in reasons
         ]
 
-
         if latest.summary:
             answer = latest.summary
         else:
@@ -265,7 +306,6 @@ class AssistantChatService:
 
             if details:
                 answer += " " + " ".join(details)
-
 
         return AssistantChatResponse(
             answer=answer

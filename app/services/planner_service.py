@@ -259,6 +259,16 @@ class PlannerService:
 
         return result.decisions
 
+    def create_plan_with_decisions(
+        self,
+        request: PlanningRequest,
+        adaptive_profile: AdaptiveProfile | None = None,
+    ) -> PlannerExecutionResult:
+        return self._plan(
+            request=request,
+            adaptive_profile=adaptive_profile,
+        )
+
 
     def _choose_best_slot(
         self,
