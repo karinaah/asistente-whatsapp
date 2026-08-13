@@ -120,22 +120,49 @@ class PlannerService:
                 hours=request.day_end_hour
             )
 
-            if current_time.date() != task_date:
-                current_time = task_day_start
-            elif current_time < task_day_start:
-                current_time = task_day_start
+            if task.deadline is not None:
+                deadline = task.deadline
+
+                if deadline.tzinfo is not None:
+                    deadline = deadline.replace(
+                        tzinfo=None
+                    )
+
+                task_day_end = min(
+                    task_day_end,
+                    deadline,
+                )
+
 
             task_duration = timedelta(
                 minutes=task.estimated_minutes
             )
 
+
+            occupied_blocks = list(busy_blocks)
+
+            occupied_blocks.extend(
+                TimeBlock(
+                    start_time=scheduled.start_time,
+                    end_time=scheduled.end_time,
+                    title=scheduled.task.title,
+                    block_type=BlockType.TASK,
+                )
+                for scheduled in scheduled_tasks
+            )
+
+            occupied_blocks.sort(
+                key=lambda block: block.start_time
+            )
+
             available_slots = self._find_available_slots(
-                current_time=current_time,
+                current_time=task_day_start,
                 task_duration=task_duration,
-                busy_blocks=busy_blocks,
+                busy_blocks=occupied_blocks,
                 break_minutes=request.break_minutes,
                 day_end=task_day_end,
             )
+
 
             if not available_slots:
                 unscheduled_tasks.append(task)
@@ -210,9 +237,6 @@ class PlannerService:
 
 
 
-            current_time = task_end + timedelta(
-                minutes=request.break_minutes
-            )
 
         timeline = self._build_timeline(
             busy_blocks=busy_blocks,
@@ -375,8 +399,18 @@ class PlannerService:
                 slot_start < block.start_time
             )
 
+
             if has_free_time_before_block:
                 slot_end = block.start_time
+
+                if (
+                    block.block_type == BlockType.TASK
+                    and break_minutes > 0
+                ):
+                    slot_end -= timedelta(
+                        minutes=break_minutes
+                    )
+
 
                 task_fits = (
                     slot_start + task_duration
@@ -401,7 +435,11 @@ class PlannerService:
                 minutes=break_minutes
             )
 
-            if break_minutes > 0:
+
+            if (
+                break_minutes > 0
+                and block.block_type != BlockType.TASK
+            ):
                 preceding_break = TimeBlock(
                     start_time=block.end_time,
                     end_time=slot_start,
@@ -410,6 +448,8 @@ class PlannerService:
                 )
             else:
                 preceding_break = None
+
+
 
         task_fits_at_end = (
             slot_start + task_duration

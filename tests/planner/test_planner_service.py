@@ -498,3 +498,109 @@ def test_explain_plan_returns_preferred_start_reason():
         PlanningReasonCode.preferred_start_time
         in reason_codes
     )    
+
+
+def test_planner_does_not_lose_earlier_free_slot():
+    planner = PlannerService()
+
+    late_high_priority_task = Task(
+        title="Preparar presentación",
+        estimated_minutes=60,
+        priority="alta",
+        category="trabajo",
+        context="trabajo",
+        preferred_start_time=time(hour=21),
+    )
+
+    earlier_task = Task(
+        title="Revisar presupuesto",
+        estimated_minutes=45,
+        priority="media",
+        category="trabajo",
+        context="trabajo",
+        preferred_start_time=time(
+            hour=18,
+            minute=30,
+        ),
+    )
+
+    request = PlanningRequest(
+        tasks=[
+            late_high_priority_task,
+            earlier_task,
+        ],
+        plan_date=date.fromisoformat(
+            "2026-08-13"
+        ),
+        day_start_hour=18,
+        day_end_hour=22,
+        break_minutes=15,
+        busy_blocks=[],
+        context="trabajo",
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 2
+    assert len(response.unscheduled_tasks) == 0
+
+    scheduled_by_title = {
+        scheduled.task.title: scheduled
+        for scheduled in response.scheduled_tasks
+    }
+
+    presentation = scheduled_by_title[
+        "Preparar presentación"
+    ]
+    budget = scheduled_by_title[
+        "Revisar presupuesto"
+    ]
+
+    assert presentation.start_time.time() == time(
+        hour=21
+    )
+
+    assert budget.start_time.time() == time(
+        hour=18,
+        minute=30,
+    )    
+
+
+def test_task_is_not_scheduled_after_deadline():
+    planner = PlannerService()
+
+    task = Task(
+        title="Revisar presupuesto urgente",
+        estimated_minutes=45,
+        priority="alta",
+        category="trabajo",
+        context="trabajo",
+        deadline=datetime.fromisoformat(
+            "2026-08-13T21:00:00"
+        ),
+        preferred_start_time=time(
+            hour=22,
+            minute=15,
+        ),
+    )
+
+    request = PlanningRequest(
+        tasks=[task],
+        plan_date=date.fromisoformat(
+            "2026-08-13"
+        ),
+        day_start_hour=18,
+        day_end_hour=23,
+        break_minutes=15,
+        busy_blocks=[],
+        context="trabajo",
+    )
+
+    response = planner.create_plan(request)
+
+    assert len(response.scheduled_tasks) == 0
+    assert len(response.unscheduled_tasks) == 1
+    assert (
+        response.unscheduled_tasks[0].title
+        == "Revisar presupuesto urgente"
+    )    

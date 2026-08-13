@@ -154,22 +154,47 @@ class AssistantChatService:
                 )
             )
 
-        explanations = [
-            self.planning_explanation_service.build(
-                decision
+
+
+        scheduled_tasks = sorted(
+            result.response.scheduled_tasks,
+            key=lambda scheduled: scheduled.start_time,
+        )
+
+        parts = [
+            (
+                f"{scheduled.task.title} "
+                f"a las "
+                f"{scheduled.start_time.strftime('%H:%M')}"
             )
-            for decision in decisions
+            for scheduled in scheduled_tasks
         ]
 
-        answer = " ".join(
-            explanation.summary
-            for explanation in explanations
+        answer = (
+            "He organizado tu día así: "
+            + "; ".join(parts)
+            + "."
         )
+
+        unscheduled_count = len(
+            result.response.unscheduled_tasks
+        )
+
+
+        if unscheduled_count == 1:
+            answer += (
+                " Quedó 1 tarea sin programar."
+            )
+        elif unscheduled_count > 1:
+            answer += (
+                f" Quedaron {unscheduled_count} "
+                f"tareas sin programar."
+            )
+
 
         return AssistantChatResponse(
             answer=answer
         )
-
 
     def _handle_recommendation(
         self,
