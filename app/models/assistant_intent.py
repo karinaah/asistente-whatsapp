@@ -6,4 +6,5 @@ class AssistantIntent(str, Enum):
     recommendation = "recommendation"
     learning = "learning"
     explanation = "explanation"
+    follow_up = "follow_up"
     unknown = "unknown"

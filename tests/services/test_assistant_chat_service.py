@@ -5,6 +5,15 @@ from app.services.assistant_chat_service import (
     AssistantChatService,
 )
 from app.models.assistant_intent import AssistantIntent
+
+from datetime import datetime
+
+from app.models.schedule import (
+    PlanningResponse,
+    ScheduledTask,
+)
+from app.models.task import Task
+
 def test_chat_planning(monkeypatch):
     service = AssistantChatService()
 
@@ -311,3 +320,88 @@ def test_chat_stores_last_plan(monkeypatch):
     )
 
     assert context.last_plan is fake_plan    
+
+
+def test_chat_follow_up_returns_next_task(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    first_task = Task(
+        id=1,
+        title="Preparar presentación",
+        estimated_minutes=60,
+        category="trabajo",
+        context="trabajo",
+    )
+
+    second_task = Task(
+        id=2,
+        title="Responder correos",
+        estimated_minutes=30,
+        category="trabajo",
+        context="trabajo",
+    )
+
+    first_scheduled = ScheduledTask(
+        task=first_task,
+        start_time=datetime.fromisoformat(
+            "2026-08-10T09:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-10T10:00:00"
+        ),
+    )
+
+    second_scheduled = ScheduledTask(
+        task=second_task,
+        start_time=datetime.fromisoformat(
+            "2026-08-10T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-10T10:30:00"
+        ),
+    )
+
+    fake_plan = PlanningResponse(
+        scheduled_tasks=[
+            first_scheduled,
+            second_scheduled,
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    fake_recommendation = type(
+        "FakeRecommendation",
+        (),
+        {
+            "task": first_task,
+            "summary": (
+                "Te recomiendo hacer "
+                "Preparar presentación."
+            ),
+        },
+    )()
+
+    service.conversation_memory_service.set_last_plan(
+        fake_plan
+    )
+
+    service.conversation_memory_service.set_last_recommendation(
+        fake_recommendation
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="¿Y después?",
+        ),
+    )
+
+    assert (
+        "responder correos"
+        in response.answer.lower()
+    )
+
+    assert "10:00" in response.answer    

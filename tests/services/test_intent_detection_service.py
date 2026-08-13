@@ -59,3 +59,13 @@ def test_detect_unknown_intent():
         )
         == AssistantIntent.unknown
     )
+
+def test_detect_follow_up_intent():
+    service = IntentDetectionService()
+
+    assert (
+        service.detect(
+            "¿Y después?"
+        )
+        == AssistantIntent.follow_up
+    )    

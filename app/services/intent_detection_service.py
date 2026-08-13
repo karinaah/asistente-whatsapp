@@ -52,4 +52,17 @@ class IntentDetectionService:
         ):
             return AssistantIntent.explanation
 
+        if any(
+            phrase in message
+            for phrase in (
+                "y después",
+                "y despues",
+                "qué sigue",
+                "que sigue",
+                "la siguiente",
+                "siguiente",
+            )
+        ):
+            return AssistantIntent.follow_up
+
         return AssistantIntent.unknown

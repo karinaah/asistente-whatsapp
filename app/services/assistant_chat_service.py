@@ -103,6 +103,13 @@ class AssistantChatService:
                 db=db,
                 request=request,
             )
+        
+        if intent == AssistantIntent.follow_up:
+            return self._handle_follow_up(
+                db=db,
+                request=request,
+            )
+
 
         return AssistantChatResponse(
             answer="No entendí tu solicitud."
@@ -309,4 +316,89 @@ class AssistantChatService:
 
         return AssistantChatResponse(
             answer=answer
+        )
+    
+    def _handle_follow_up(
+        self,
+        db: Session,
+        request: AssistantChatRequest,
+    ) -> AssistantChatResponse:
+        context = (
+            self.conversation_memory_service
+            .get_context()
+        )
+
+        plan = context.last_plan
+
+        if plan is None or not plan.scheduled_tasks:
+            return AssistantChatResponse(
+                answer=(
+                    "Todavía no tengo un plan reciente "
+                    "para decirte qué sigue."
+                )
+            )
+
+        scheduled_tasks = plan.scheduled_tasks
+
+        if context.last_recommendation is not None:
+            recommended_task = (
+                context.last_recommendation.task
+            )
+
+            for index, scheduled in enumerate(
+                scheduled_tasks
+            ):
+                same_task = (
+                    scheduled.task.id == recommended_task.id
+                    if (
+                        scheduled.task.id is not None
+                        and recommended_task.id is not None
+                    )
+                    else (
+                        scheduled.task.title
+                        == recommended_task.title
+                    )
+                )
+
+                if same_task:
+                    next_index = index + 1
+
+                    if next_index < len(scheduled_tasks):
+                        next_task = scheduled_tasks[
+                            next_index
+                        ]
+
+                        return AssistantChatResponse(
+                            answer=(
+                                f"Después sigue "
+                                f"{next_task.task.title}, "
+                                f"programada para las "
+                                f"{next_task.start_time.strftime('%H:%M')}."
+                            )
+                        )
+
+                    return AssistantChatResponse(
+                        answer=(
+                            "Esa es la última tarea "
+                            "de tu plan actual."
+                        )
+                    )
+
+        if len(scheduled_tasks) >= 2:
+            next_task = scheduled_tasks[1]
+
+            return AssistantChatResponse(
+                answer=(
+                    f"Después sigue "
+                    f"{next_task.task.title}, "
+                    f"programada para las "
+                    f"{next_task.start_time.strftime('%H:%M')}."
+                )
+            )
+
+        return AssistantChatResponse(
+            answer=(
+                "No hay otra tarea después "
+                "en tu plan actual."
+            )
         )
