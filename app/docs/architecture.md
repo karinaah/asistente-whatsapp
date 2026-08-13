@@ -25,6 +25,7 @@ La arquitectura de AURA debe permitir:
 - incorporar proveedores externos sin afectar el núcleo;
 - mantener decisiones completamente explicables;
 - aprender automáticamente del comportamiento del usuario;
+- mantener contexto conversacional básico;
 - evolucionar mediante componentes independientes.
 
 ---
@@ -74,9 +75,9 @@ AURA utiliza una combinación de principios y patrones arquitectónicos.
 
 ## Dominio
 
-El dominio contiene exclusivamente conceptos del negocio.
+El dominio contiene los modelos que representan los conceptos principales utilizados por los motores y servicios de AURA.
 
-No depende de FastAPI, SQLAlchemy ni de ninguna otra tecnología.
+La lógica del dominio permanece desacoplada de FastAPI y de los detalles de infraestructura.
 
 Principales modelos:
 
@@ -93,12 +94,13 @@ Principales modelos:
 - LearningInsight
 - AdaptiveProfile
 - Explanation
+- ConversationContext
 
 ---
 
 ## Servicios de aplicación
 
-Los servicios coordinan los casos de uso.
+Los servicios coordinan los casos de uso y encapsulan la lógica necesaria para utilizar los distintos motores del sistema.
 
 Actualmente existen:
 
@@ -111,14 +113,24 @@ Actualmente existen:
 - HumanStateService
 - RecommendationHistoryService
 - TaskExecutionService
+- ConversationMemoryService
+- AssistantChatService
+- IntentDetectionService
+
+También existen servicios especializados de explicación:
+
+- AdaptiveProfileExplanationService
+- RecommendationExplanationService
+- PlanningExplanationService
+- LearningExplanationService
 
 ---
 
 ## Persistencia
 
-La persistencia está completamente desacoplada mediante Repository Pattern.
+La persistencia está desacoplada mediante Repository Pattern.
 
-Los servicios nunca ejecutan consultas SQL directamente.
+Los servicios utilizan repositorios para acceder a la información persistida, evitando que la lógica de aplicación dependa directamente de consultas SQL.
 
 Flujo:
 
@@ -149,13 +161,73 @@ Repositorios actuales:
 
 Los workflows encapsulan casos de uso completos reutilizando múltiples servicios de aplicación.
 
-Su objetivo es ofrecer una única interfaz para operaciones complejas, evitando que los endpoints o el Assistant conozcan los detalles internos de los motores.
+Su objetivo es ofrecer una única interfaz para operaciones complejas, evitando que los endpoints o la Assistant Layer conozcan los detalles internos de los motores.
 
-Actualmente:
+Actualmente existen:
 
 - PlanningWorkflowService
 - RecommendationWorkflowService
 
+`PlanningWorkflowService` permite construir planes utilizando las tareas persistidas y el perfil adaptativo.
+
+También permite obtener el plan y sus decisiones explicables dentro de una misma ejecución del Planner, evitando ejecutar innecesariamente el motor más de una vez.
+
+`RecommendationWorkflowService` coordina la planificación, el estado humano, el perfil adaptativo, el Decision Engine y el historial necesario para producir recomendaciones.
+
+---
+
+## Memoria conversacional
+
+AURA mantiene contexto temporal durante una conversación mediante `ConversationMemoryService`.
+
+El estado conversacional se representa mediante `ConversationContext`.
+
+Actualmente conserva:
+
+- última intención detectada;
+- última recomendación;
+- último plan generado.
+
+Flujo:
+
+```text
+ConversationMemoryService
+        │
+        ▼
+ConversationContext
+        │
+        ├── last_intent
+        ├── last_recommendation
+        └── last_plan
+```
+
+Esta memoria permite reutilizar información de interacciones anteriores sin consultar o recalcular innecesariamente información.
+
+Por ejemplo:
+
+```text
+Usuario: ¿Qué hago ahora?
+        │
+        ▼
+Recommendation
+        │
+        ▼
+last_recommendation
+
+Usuario: ¿Por qué?
+        │
+        ▼
+ConversationMemoryService
+        │
+        ▼
+last_recommendation
+```
+
+Cuando la información necesaria no está disponible en memoria, los servicios persistentes pueden actuar como fallback.
+
+Por ejemplo, las explicaciones de recomendaciones pueden utilizar `RecommendationHistoryService` cuando no existe una recomendación disponible en el contexto conversacional.
+
+La memoria conversacional actual reside en memoria durante la ejecución de la aplicación. No representa todavía una sesión persistente ni una memoria multiusuario.
 
 ---
 
@@ -163,23 +235,31 @@ Actualmente:
 
 La Assistant Layer proporciona una interfaz conversacional unificada sobre los distintos motores de AURA.
 
-Su responsabilidad consiste en interpretar la intención del usuario, seleccionar el caso de uso adecuado y orquestar los distintos Workflow Services y motores del sistema.
+Su responsabilidad consiste en interpretar la intención del usuario, seleccionar el caso de uso adecuado y orquestar los Workflow Services y servicios de aplicación correspondientes.
 
 Actualmente incluye:
 
 - AssistantChatService
 - IntentDetectionService
+- ConversationMemoryService
 
 Las principales intenciones soportadas son:
 
 - planificación;
 - recomendaciones;
 - aprendizaje;
-- explicaciones.
+- explicaciones;
+- seguimiento contextual (`follow_up`).
 
 Esta capa desacopla la interacción con el usuario de la lógica de negocio, permitiendo que los motores evolucionen de forma independiente.
----
 
+El endpoint principal de esta capa es:
+
+```text
+POST /assistant/chat
+```
+
+---
 
 # Motores
 
@@ -207,6 +287,8 @@ Produce:
 
 Las decisiones de planificación permiten explicar posteriormente por qué cada tarea fue ubicada en un determinado horario.
 
+El Planner también puede producir el plan y sus decisiones en una única ejecución para evitar cálculos duplicados cuando ambos resultados son necesarios.
+
 ---
 
 ## Decision Engine
@@ -233,7 +315,7 @@ Produce:
 - Recommendation
 - RecommendationReason
 
-Todas las recomendaciones son completamente explicables.
+Todas las recomendaciones son explicables mediante las razones generadas por las reglas del motor.
 
 ---
 
@@ -254,13 +336,13 @@ Produce:
 - LearningInsight
 - AdaptiveProfile
 
-El conocimiento aprendido es reutilizado por el Planner y el Decision Engine.
+El conocimiento aprendido es reutilizado por el Planner Engine y el Decision Engine.
 
 ---
 
 ## Explanation Engine
 
-Responsable de transformar el conocimiento interno del sistema en explicaciones naturales.
+Responsable de transformar el conocimiento interno del sistema en explicaciones comprensibles.
 
 Actualmente incluye:
 
@@ -269,11 +351,11 @@ Actualmente incluye:
 - PlanningExplanationService
 - LearningExplanationService
 
-Todos producen el modelo unificado:
+Estos servicios utilizan el modelo unificado:
 
 - Explanation
 
-De esta manera la lógica del negocio permanece separada de la presentación.
+De esta manera, la lógica del negocio permanece separada de la presentación de las decisiones al usuario.
 
 ---
 
@@ -296,6 +378,22 @@ Actualmente almacena:
 - preferencias aprendidas;
 - mejores condiciones conocidas;
 - nivel de confianza del aprendizaje.
+
+---
+
+## ConversationMemoryService
+
+Gestiona el contexto temporal utilizado por la Assistant Layer.
+
+Responsabilidades actuales:
+
+- conservar la última intención;
+- conservar la última recomendación;
+- conservar el último plan;
+- recuperar el contexto conversacional;
+- limpiar la memoria cuando sea necesario.
+
+La implementación actual utiliza memoria local y no requiere servicios externos ni APIs de pago.
 
 ---
 
@@ -337,6 +435,8 @@ Planner Engine   Decision Engine
 
 ## Flujo de explicaciones
 
+### Planificación
+
 ```text
 Planner Engine
         │
@@ -349,6 +449,8 @@ PlanningExplanationService
         ▼
 Explanation
 ```
+
+### Recomendación
 
 ```text
 Decision Engine
@@ -363,6 +465,8 @@ RecommendationExplanationService
 Explanation
 ```
 
+### Aprendizaje
+
 ```text
 Learning Engine
         │
@@ -376,6 +480,8 @@ LearningExplanationService
 Explanation
 ```
 
+### Perfil adaptativo
+
 ```text
 AdaptiveProfile
         │
@@ -385,6 +491,68 @@ AdaptiveProfileExplanationService
         ▼
 Explanation
 ```
+
+---
+
+## Flujo conversacional
+
+La Assistant Layer funciona como punto de entrada unificado para la interacción conversacional.
+
+```text
+Usuario
+      │
+      ▼
+AssistantChatService
+      │
+      ├──────────────► ConversationMemoryService
+      │                       │
+      │                       ▼
+      │               ConversationContext
+      │
+      ▼
+IntentDetectionService
+      │
+      ├────────────┬────────────┬────────────┬────────────┐
+      ▼            ▼            ▼            ▼            ▼
+ Planning    Recommendation   Learning   Explanation   Follow-up
+ Workflow       Workflow
+      │            │
+      └────────────┴──────────────────────────┐
+                                             ▼
+                                  AssistantChatResponse
+```
+
+La memoria permite que una interacción pueda utilizar información generada anteriormente.
+
+Ejemplo:
+
+```text
+Usuario
+"Planifica mi día"
+        │
+        ▼
+last_plan
+
+Usuario
+"¿Qué hago ahora?"
+        │
+        ▼
+last_recommendation
+
+Usuario
+"¿Por qué?"
+        │
+        ▼
+last_recommendation
+
+Usuario
+"¿Y después?"
+        │
+        ▼
+last_plan + last_recommendation
+```
+
+Esto permite mantener conversaciones contextuales básicas sin depender de un modelo de lenguaje externo.
 
 ---
 
@@ -402,16 +570,25 @@ Actualmente existen endpoints para:
 - ejecuciones;
 - aprendizaje;
 - perfil adaptativo;
-- explicaciones.
-- asistente conversacional.
+- explicaciones;
+- asistente conversacional;
+- seguimiento contextual de conversaciones.
 
-El endpoint `/assistant/chat` constituye la principal interfaz conversacional del sistema y reutiliza los motores existentes mediante la Assistant Layer.
+El endpoint:
+
+```text
+POST /assistant/chat
+```
+
+constituye la principal interfaz conversacional del sistema y reutiliza los motores existentes mediante la Assistant Layer.
+
+La documentación interactiva de la API se genera automáticamente mediante Swagger.
 
 ---
 
 # Testing
 
-La arquitectura fue diseñada para facilitar pruebas unitarias e integración.
+La arquitectura fue diseñada para facilitar pruebas unitarias y de integración.
 
 Actualmente existen pruebas para:
 
@@ -422,9 +599,55 @@ Actualmente existen pruebas para:
 - servicios de explicación;
 - persistencia;
 - reglas individuales;
-- integración entre motores.
+- integración entre motores;
+- Workflow Services;
+- AssistantChatService;
+- IntentDetectionService;
+- memoria conversacional;
+- flujos conversacionales contextuales.
 
-**74 tests automatizados.**
+**83 tests automatizados.**
+
+Los tests permiten validar los motores de forma independiente y comprobar los principales flujos de integración sin depender de la interfaz HTTP.
+
+---
+
+# Estado arquitectónico de v1.0.0
+
+La primera versión estable de AURA integra las siguientes capacidades:
+
+```text
+                    AURA
+                      │
+              Assistant Layer
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+Conversation Memory          Workflows
+                                  │
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+           Planner            Decision            Learning
+              │                   │                   │
+              └───────────────────┼───────────────────┘
+                                  │
+                           Explanation
+                                  │
+                                  ▼
+                           Adaptive Profile
+```
+
+La arquitectura mantiene separados:
+
+- interacción;
+- orquestación;
+- dominio;
+- persistencia;
+- aprendizaje;
+- explicación;
+- memoria conversacional.
+
+Esto permite evolucionar cada capacidad sin acoplarla innecesariamente a las demás.
 
 ---
 
@@ -438,34 +661,11 @@ Su objetivo es convertirse en un asistente inteligente capaz de:
 - recomendar;
 - aprender;
 - adaptarse;
-- explicar cada decisión que toma.
+- explicar cada decisión que toma;
+- mantener contexto durante una conversación.
 
-La interacción con el usuario se realiza mediante una capa conversacional que reutiliza estos motores, permitiendo ofrecer una experiencia unificada sin acoplar la interfaz a la lógica del negocio.
+La interacción con el usuario se realiza mediante una capa conversacional que reutiliza los motores existentes, permitiendo ofrecer una experiencia unificada sin acoplar la interfaz a la lógica del negocio.
 
-## Flujo conversacional
+La versión v1.0.0 establece una base funcional y explicable sobre la cual pueden incorporarse posteriormente capacidades como memoria por sesión, interfaces adicionales, integraciones externas y modelos de lenguaje opcionales.
 
-```text
-Usuario
-      │
-      ▼
-AssistantChatService
-      │
-      ▼
-IntentDetectionService
-      │
-      ├───────────────┬───────────────┬───────────────┐
-      ▼               ▼               ▼               ▼
-Planning        Recommendation    Learning     Explanation
-Workflow         Workflow
-      │               │
-      └───────────────┴───────────────┐
-                                      ▼
-                              AssistantResponse
-
-# 7. Servicios de aplicación
-
-Yo agregaría:
-
-```markdown
-- AssistantChatService
-- IntentDetectionService                              
+El núcleo de AURA permanece funcional sin depender de servicios externos de inteligencia artificial.

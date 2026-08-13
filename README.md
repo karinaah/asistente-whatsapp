@@ -1,16 +1,16 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
-
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
-
-![Tests](https://img.shields.io/badge/tests-74%20passing-success)
-
-![Version](https://img.shields.io/badge/version-v0.9.0-orange)
+![Tests](https://img.shields.io/badge/tests-83%20passing-success)
+![Version](https://img.shields.io/badge/version-v1.0.0-orange)
 
 # AURA
 
-AURA es un asistente inteligente de productividad que planifica, recomienda, aprende y explica sus decisiones mediante una interfaz conversacional.
+AURA es un asistente inteligente de productividad que planifica, recomienda, aprende, se adapta y explica sus decisiones mediante una interfaz conversacional.
 
-Su arquitectura está basada en motores desacoplados, reglas explicables y aprendizaje adaptativo, priorizando mantenibilidad, extensibilidad y facilidad de prueba.
+Su arquitectura está basada en motores desacoplados, reglas explicables, aprendizaje adaptativo y memoria conversacional, priorizando mantenibilidad, extensibilidad y facilidad de prueba.
+
+AURA v1.0.0 funciona sin depender de servicios externos de inteligencia artificial ni APIs de pago.
+
 ---
 
 ## Características
@@ -33,25 +33,55 @@ Su arquitectura está basada en motores desacoplados, reglas explicables y apren
 - Explicación de la planificación.
 - Explicación del aprendizaje.
 - Explicación del perfil adaptativo.
+- Memoria conversacional temporal.
+- Seguimiento contextual de conversaciones.
+- Reutilización del último plan y recomendación durante la conversación.
+- Soporte para consultas contextuales como `¿Y después?`.
 
 ---
 
-## Arquitectura
+# Arquitectura
 
 La arquitectura de AURA está compuesta por una capa conversacional que orquesta varios motores especializados.
 
-Actualmente incluye:
+Sus principales componentes son:
 
 - Assistant Layer
+- Conversation Memory
 - Planner Engine
 - Decision Engine
 - Learning Engine
 - Explanation Engine
+- Adaptive Profile
+- Workflow Services
+- Repository Layer
 
-Cada motor tiene una responsabilidad única y se comunica mediante modelos de dominio explícitos.
+Cada componente tiene responsabilidades definidas y se comunica mediante modelos explícitos.
 
-La lógica de negocio permanece desacoplada de FastAPI, SQLAlchemy y de cualquier proveedor externo.
+La lógica de negocio permanece desacoplada de FastAPI, SQLAlchemy y de proveedores externos.
 
+```text
+                    AURA
+                      │
+              Assistant Layer
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+Conversation Memory          Workflows
+                                  │
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+           Planner            Decision            Learning
+              │                   │                   │
+              └───────────────────┼───────────────────┘
+                                  │
+                           Explanation
+                                  │
+                                  ▼
+                           Adaptive Profile
+```
+
+La arquitectura completa se encuentra documentada en `docs/architecture.md`.
 
 ---
 
@@ -67,9 +97,12 @@ Genera automáticamente un plan diario considerando:
 - bloques ocupados;
 - descansos;
 - contexto;
-- duración estimada.
+- duración estimada;
+- conocimiento del Adaptive Profile.
 
-El resultado es un plan completamente explicable y determinista.
+El resultado es un plan explicable y determinista.
+
+El Planner también puede producir el plan y sus decisiones explicables dentro de una misma ejecución, evitando cálculos duplicados.
 
 ---
 
@@ -81,39 +114,120 @@ Cada recomendación se construye mediante reglas independientes que generan:
 
 - puntuación;
 - razones;
-- explicación en lenguaje natural.
+- explicación.
+
+Actualmente puede considerar factores como:
+
+- prioridad;
+- deadlines;
+- contexto;
+- tiempo disponible;
+- energía;
+- enfoque;
+- estrés;
+- preferencias horarias;
+- aprendizaje adaptativo.
 
 ---
 
 ## Learning Engine
 
-Analiza las ejecuciones reales registradas por el usuario para detectar patrones de comportamiento.
+Analiza las ejecuciones reales registradas para detectar patrones de comportamiento.
 
-Actualmente aprende:
+Actualmente aprende sobre:
 
 - precisión de las estimaciones;
 - comportamiento por categoría;
 - productividad según energía;
 - hábitos generales.
 
+El conocimiento obtenido puede consolidarse en el Adaptive Profile y reutilizarse en decisiones futuras.
+
 ---
 
-## Adaptive Profile 
+## Explanation Engine
 
-Consolida el aprendizaje generado por el Learning Engine en un único perfil persistente.
+Transforma las decisiones internas de AURA en explicaciones comprensibles.
 
-Este perfil representa el conocimiento que AURA tiene sobre el usuario y es utilizado por:
+Actualmente incluye explicaciones para:
+
+- recomendaciones;
+- planificación;
+- aprendizaje;
+- Adaptive Profile.
+
+La explicación permanece separada de la lógica que toma la decisión.
+
+---
+
+# Adaptive Profile
+
+El Adaptive Profile consolida el conocimiento generado por el Learning Engine en un perfil persistente.
+
+Representa información aprendida sobre el comportamiento del usuario y es reutilizado por:
 
 - Planner Engine;
 - Decision Engine.
 
-De esta forma ambos motores utilizan exactamente la misma información aprendida.
+Esto permite que planificación y recomendación utilicen una fuente compartida de conocimiento adaptativo.
+
+---
+
+# Assistant Layer
+
+La Assistant Layer proporciona una interfaz conversacional unificada sobre los motores existentes.
+
+Actualmente puede reconocer intenciones relacionadas con:
+
+- planificación;
+- recomendaciones;
+- aprendizaje;
+- explicaciones;
+- seguimiento contextual.
+
+El principal punto de entrada es:
+
+```text
+POST /assistant/chat
+```
+
+Ejemplo de interacción:
+
+```text
+Usuario: Planifica mi día
+AURA: genera el plan
+
+Usuario: ¿Qué hago ahora?
+AURA: genera una recomendación
+
+Usuario: ¿Por qué?
+AURA: explica la recomendación
+
+Usuario: ¿Y después?
+AURA: utiliza el contexto del plan y la recomendación
+```
+
+---
+
+# Memoria conversacional
+
+AURA v1.0.0 incorpora memoria conversacional temporal mediante `ConversationMemoryService`.
+
+Actualmente puede conservar:
+
+- última intención detectada;
+- última recomendación;
+- último plan generado.
+
+Esto permite reutilizar contexto entre mensajes consecutivos.
+
+La memoria actual reside durante la ejecución de la aplicación. Todavía no representa memoria persistente por usuario ni sesiones conversacionales independientes.
+
+Cuando determinada información no se encuentra disponible en memoria, algunos flujos pueden recurrir a información persistida como fallback.
 
 ---
 
 # Tecnologías
-
-El núcleo de AURA está construido con tecnologías modernas del ecosistema Python.
 
 ## Backend
 
@@ -134,19 +248,25 @@ El núcleo de AURA está construido con tecnologías modernas del ecosistema Pyt
 - Service Layer
 - Domain Models
 - Rule-based Engines
+- Explainable Models
+- Workflow Services
 
-## Integraciones
+---
 
-Actualmente todas las integraciones son opcionales.
+# Integraciones
 
-Las próximas integraciones consideradas incluyen:
+El núcleo actual de AURA no requiere integraciones externas ni servicios de IA de pago.
 
-- Google Calendar
-- WhatsApp
-- GitHub
-- Apple Health
-- Garmin
+Las integraciones futuras serán opcionales y podrán incluir:
 
+- Google Calendar;
+- WhatsApp;
+- GitHub;
+- Apple Health;
+- Garmin;
+- modelos de lenguaje.
+
+El objetivo arquitectónico es que las integraciones externas complementen el sistema sin convertirse en una dependencia del núcleo.
 
 ---
 
@@ -155,8 +275,7 @@ Las próximas integraciones consideradas incluyen:
 Clonar el repositorio:
 
 ```bash
-git clone https://github.com/TU_USUARIO/AURA.git
-
+git clone https://github.com/karinaah/asistente-whatsapp.git
 cd AURA
 ```
 
@@ -166,15 +285,13 @@ Crear un entorno virtual:
 python -m venv .venv
 ```
 
-Activarlo:
-
-Windows
+Activarlo en Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Linux / macOS
+Activarlo en Linux o macOS:
 
 ```bash
 source .venv/bin/activate
@@ -186,7 +303,6 @@ Instalar dependencias:
 pip install -r requirements.txt
 ```
 
-
 ---
 
 # Ejecutar
@@ -197,12 +313,11 @@ Iniciar el servidor:
 uvicorn app.main:app --reload
 ```
 
-Documentación Swagger:
+La documentación interactiva de Swagger estará disponible en:
 
-```
+```text
 http://127.0.0.1:8000/docs
 ```
-
 
 ---
 
@@ -214,88 +329,104 @@ Ejecutar toda la suite:
 pytest -v
 ```
 
-Estado actual:
+Estado de v1.0.0:
 
-- 74 tests automáticos.
+- 83 tests automatizados.
 - Tests unitarios.
 - Tests de integración.
-Cobertura de:
-
-- Planner Engine
-- Decision Engine
-- Learning Engine
-- Explanation Engine
-- Assistant Layer
-- Workflows
-- Persistencia
+- Tests de persistencia.
+- Tests de reglas.
+- Tests de motores.
+- Tests de Workflow Services.
+- Tests de memoria conversacional.
+- Tests de flujos conversacionales.
+- Cobertura de Planner, Decision, Learning, Explanation, Adaptive Profile y Assistant.
 
 ---
 
 # API
 
-La API REST permite gestionar tareas, generar planificación, obtener recomendaciones y administrar el aprendizaje adaptativo.
+La API REST permite utilizar las principales capacidades de AURA.
 
-Entre los principales endpoints se encuentran:
+Incluye casos de uso para:
 
-- Gestión de tareas.
-- Planificación automática.
-- Recomendaciones.
-- Historial de recomendaciones.
-- Registro de ejecuciones.
-- Adaptive Profile.
+- gestión de tareas;
+- planificación automática;
+- recomendaciones;
+- historial de recomendaciones;
+- estado humano;
+- registro de ejecuciones;
+- aprendizaje;
+- Adaptive Profile;
+- explicaciones;
 - Assistant Chat.
 
-Toda la documentación interactiva está disponible mediante Swagger.
+La Assistant Layer expone el flujo conversacional principalmente mediante:
 
+```text
+POST /assistant/chat
+```
+
+Toda la documentación interactiva de los endpoints está disponible mediante Swagger.
 
 ---
 
-## Estado del proyecto
+# Estado del proyecto
 
-Versión actual: **v0.9.0**
-Objetivo actual: alcanzar la primera versión estable (v1.0.0) mediante la incorporación de memoria conversacional, integración con modelos de lenguaje e integraciones externas.
-Estado del desarrollo:
+Versión actual: **v1.0.0**
 
+Estado:
 
-✅ Planner Engine
+- ✅ Planner Engine
+- ✅ Decision Engine
+- ✅ Learning Engine
+- ✅ Explanation Engine
+- ✅ Adaptive Profile
+- ✅ Workflow Services
+- ✅ Assistant Layer
+- ✅ Conversational Memory
+- ✅ Contextual Follow-ups
+- ✅ Persistencia
+- ✅ Suite automatizada de tests
 
-✅ Decision Engine
-
-✅ Learning Engine
-
-✅ Explanation Engine
-
-✅ Assistant Layer
-
-🚧 Sprint 10
+AURA v1.0.0 representa la primera versión estable del núcleo del asistente.
 
 ---
 
 # Roadmap
 
-Las próximas versiones estarán enfocadas en:
+Después de v1.0.0, las posibles líneas de evolución incluyen:
 
-- mejorar las explicaciones del aprendizaje;
-- enriquecer el Adaptive Profile;
-- memoria conversacional;
-- integración con LLM;
-- contexto persistente;
-- integraciones externas;
-- optimización del aprendizaje adaptativo.
-- ampliar las integraciones externas;
-- continuar aumentando la cobertura de pruebas.
+- memoria conversacional por sesión y usuario;
+- contexto conversacional persistente;
+- referencias contextuales más avanzadas;
+- explicaciones conversacionales más naturales;
+- mejoras del aprendizaje adaptativo;
+- nuevas reglas de planificación y recomendación;
+- integración opcional con modelos de lenguaje;
+- Google Calendar;
+- WhatsApp;
+- otras integraciones externas;
+- ampliación continua de la cobertura de pruebas.
 
 El roadmap completo se encuentra en `docs/roadmap.md`.
 
-
 ---
 
-# Licencia
+# Limitaciones actuales
 
-Este proyecto se encuentra actualmente en desarrollo.
+AURA v1.0.0 establece el núcleo funcional del proyecto, pero todavía existen capacidades previstas para versiones posteriores.
 
-La licencia será definida antes de la primera versión estable (v1.0.0).
+Entre ellas:
 
+- la memoria conversacional no es persistente;
+- todavía no existe aislamiento de memoria por usuario o sesión;
+- el reconocimiento de intención está basado en reglas;
+- las conversaciones contextuales soportadas son todavía limitadas;
+- las integraciones externas no forman parte del núcleo v1.0.0;
+- no se utiliza un modelo de lenguaje para generar o interpretar conversaciones.
+
+Estas limitaciones permiten mantener la primera versión determinista, explicable y completamente funcional sin servicios externos.
 
 ---
 
@@ -303,25 +434,13 @@ La licencia será definida antes de la primera versión estable (v1.0.0).
 
 AURA busca construir un asistente que ayude a tomar mejores decisiones, no simplemente un gestor de tareas.
 
-Cada recomendación debe ser:
+Cada decisión debe ser:
 
 - explicable;
 - transparente;
 - reproducible;
-- basada en el comportamiento real del usuario.
+- basada en información disponible y, cuando corresponda, en el comportamiento aprendido del usuario.
 
 El objetivo no es reemplazar las decisiones del usuario, sino ofrecer recomendaciones fundamentadas que evolucionen con el tiempo.
 
-
-                    AURA
-
-            Assistant Layer
-                    │
-        Intent Detection Service
-                    │
-      ┌─────────────┼─────────────┐
-      ▼             ▼             ▼
- Planner      Recommendation   Learning
-                    │
-                    ▼
-             Explanation Engine
+AURA está diseñado para que nuevas capacidades puedan incorporarse progresivamente sin comprometer la claridad ni la independencia de su núcleo.

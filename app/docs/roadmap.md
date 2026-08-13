@@ -226,19 +226,34 @@ Cada motor genera un modelo explícito que posteriormente es transformado en exp
 - Integración del Assistant con Planner, Decision y Learning Engine.
 
 
-# Sprint 10
+## ✅ Sprint 10 — Conversational Intelligence
 
-- [ ] Conversational memory
-- [ ] LLM integration
-- [ ] Context-aware conversations
-- [ ] Smarter responses
+Objetivo: permitir que AURA mantenga contexto básico entre interacciones consecutivas.
 
-# Visión hacia v1.0
+### Completado
 
-Antes de la versión 1.0 el proyecto buscará completar:
+- [x] ConversationContext.
+- [x] ConversationMemoryService.
+- [x] Memoria de la última intención.
+- [x] Memoria de la última recomendación.
+- [x] Memoria del último plan.
+- [x] Explicaciones utilizando memoria conversacional.
+- [x] Historial persistente como fallback.
+- [x] Intent `follow_up`.
+- [x] Soporte para consultas contextuales como `¿Y después?`.
+- [x] Integración de memoria con AssistantChatService.
+- [x] Tests de memoria y flujos conversacionales.
 
-- Integraciones externas.
-- Evidencias automáticas de cumplimiento.
-- Simulación de planificación.
-- Inteligencia conversacional.
-- Evolución del Adaptive Profile.
+
+## 🔮 Post v1.0
+
+Posibles líneas de evolución:
+
+- memoria conversacional multiusuario y por sesión;
+- historial conversacional más rico;
+- referencias contextuales como `esa tarea` o `la anterior`;
+- respuestas conversacionales más naturales;
+- integración opcional con modelos de lenguaje;
+- Google Calendar;
+- WhatsApp;
+- otras integraciones externas.
