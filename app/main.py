@@ -31,7 +31,7 @@ from app.api import explanation_api
 from app.api.assistant_chat import (
     router as assistant_chat_router,
 )
-
+from app.web.routes import router as web_router
 configure_logging()
 
 # TaskDB debe estar importado antes de create_all
@@ -76,3 +76,4 @@ app.include_router(
     explanation_api.router
 )
 app.include_router(assistant_chat_router)
+app.include_router(web_router)

@@ -4,11 +4,11 @@
 
 ### Versión
 
-v0.8.0 — Adaptive Intelligence
+v1.0.1 — Adaptive Intelligence
 
 ### Estado
 
-Desarrollo activo.
+Version estable
 
 ### Capacidades principales
 
@@ -19,7 +19,7 @@ Desarrollo activo.
 - Planificación adaptativa.
 - Recomendaciones adaptativas.
 - API REST.
-- Suite de pruebas automatizadas (57 tests).
+- Suite de pruebas automatizadas (85 tests).
 
 ---
 
