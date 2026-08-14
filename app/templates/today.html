@@ -11,5 +11,30 @@
 
     <p>Hoy: {{ today }}</p>
 
+    <p>Tareas programadas: {{ plan.scheduled_tasks | length }}</p>
+    <p>Tareas no programadas: {{ plan.unscheduled_tasks | length }}</p>
+
+    <h2>Plan de hoy</h2>
+
+    {% for item in plan.scheduled_tasks %}
+        <p>
+            {{ item.start_time.strftime("%H:%M") }}
+            -
+            {{ item.end_time.strftime("%H:%M") }}
+            |
+            {{ item.task.title }}
+            
+            <br>
+            Prioridad: {{ item.task.priority.value }}
+            |
+            Categoría: {{ item.task.category.value }}            
+        </p>
+    {% endfor %}
+
+    <h2>No programadas</h2>
+
+    {% for task in plan.unscheduled_tasks %}
+        <p>{{ task.title }}</p>
+    {% endfor %}
 </body>
 </html>
