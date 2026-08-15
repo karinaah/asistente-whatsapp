@@ -4,37 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AURA</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <h1>AURA</h1>
-    <p>Tu asistente personal de planificación.</p>
+    <div class="container">
 
-    <p>Hoy: {{ today }}</p>
+        <div class="header">
+            <h1>AURA</h1>
+            <p>Tu asistente personal de planificación.</p>
+            <p>Hoy: {{ today }}</p>
+        </div>
 
-    <p>Tareas programadas: {{ plan.scheduled_tasks | length }}</p>
-    <p>Tareas no programadas: {{ plan.unscheduled_tasks | length }}</p>
+        <div class="summary">
+            <div class="summary-card">
+                <strong>{{ plan.scheduled_tasks | length }}</strong>
+                <span>Tareas programadas</span>
+            </div>
 
-    <h2>Plan de hoy</h2>
+            <div class="summary-card">
+                <strong>{{ plan.unscheduled_tasks | length }}</strong>
+                <span>Tareas no programadas</span>
+            </div>
+        </div>
 
-    {% for item in plan.scheduled_tasks %}
-        <p>
-            {{ item.start_time.strftime("%H:%M") }}
-            -
-            {{ item.end_time.strftime("%H:%M") }}
-            |
-            {{ item.task.title }}
-            
-            <br>
-            Prioridad: {{ item.task.priority.value }}
-            |
-            Categoría: {{ item.task.category.value }}            
-        </p>
-    {% endfor %}
+        <h2>Plan de hoy</h2>
 
-    <h2>No programadas</h2>
+        {% for item in plan.scheduled_tasks %}
 
-    {% for task in plan.unscheduled_tasks %}
-        <p>{{ task.title }}</p>
-    {% endfor %}
+            <div class="task-card">
+                <div class="task-time">
+                    {{ item.start_time.strftime("%H:%M") }}
+                    -
+                    {{ item.end_time.strftime("%H:%M") }}
+                </div>
+
+                <div class="task-title">
+                    {{ item.task.title }}
+                </div>
+
+                <p class="task-meta">
+                    Prioridad: {{ item.task.priority.value }}
+                    |
+                    Categoría: {{ item.task.category.value }}
+                </p>
+                <form method="post" action="/web/tasks/{{ item.task.id }}/complete">
+                    <button type="submit" class="complete-button">
+                        Completar
+                    </button>
+
+                </form>                
+            </div>
+
+        {% endfor %}
+
+        <h2>No programadas</h2>
+
+
+        {% for task in plan.unscheduled_tasks %}
+            <div class="unscheduled-task">
+                {{ task.title }}
+            </div>
+        {% endfor %}        
+    </div>
 </body>
 </html>

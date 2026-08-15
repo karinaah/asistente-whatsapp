@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import FastAPI
-
+from fastapi.staticfiles import StaticFiles
 from app.api.assistant import router as assistant_router
 from app.api.planner import router as planner_router
 from app.api.tasks import router as tasks_router
@@ -44,6 +44,12 @@ app = FastAPI(
     version=settings.app_version,
 )
 register_exception_handlers(app)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
+)
 
 @app.on_event("startup")
 def on_startup() -> None:
