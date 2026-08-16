@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - AURA</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="/web">Hoy</a>
+            |
+            <a href="/web/tasks">Tareas</a>
+            |
+            <a href="/web/chat">Chat</a>
+        </nav>
+
+        <h1>Chat con AURA</h1>
+
+        <p>Pregúntale a AURA sobre tu planificación, recomendaciones o aprendizaje.</p>
+
+        <form method="post" action="/web/chat">
+            <input
+                type="text"
+                name="message"
+                placeholder="Escribe tu mensaje..."
+                required
+            >
+
+            <button type="submit">
+                Enviar
+            </button>
+        </form>
+
+        <div class="chat-messages">
+
+            {% if message %}
+                <div class="chat-message user-message">
+                    <div class="message-author">Tú</div>
+                    <div class="message-content">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if answer %}
+                <div class="chat-message aura-message">
+                    <div class="message-author">AURA</div>
+                    <div class="message-content">
+                        {{ answer }}
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+
+
+    </div>
+</body>
+</html>

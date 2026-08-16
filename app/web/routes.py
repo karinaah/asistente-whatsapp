@@ -17,10 +17,13 @@ from app.services.planning_workflow_service import (
 from app.models.schedule import PlanningFromDBRequest
 from app.services.task_service import TaskService
 from app.models.task import Task, TaskUpdate
+from app.models.assistant_chat import AssistantChatRequest
+from app.services.assistant_chat_service import AssistantChatService
+
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
-
+assistant_chat_service = AssistantChatService()
 
 @router.get("/web")
 def home(
@@ -150,4 +153,36 @@ def edit_task_from_web(
     return RedirectResponse(
         url="/web/tasks",
         status_code=303,
+    )
+
+@router.get("/web/chat")
+def chat_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="chat.html",
+        context={},
+    )    
+
+@router.post("/web/chat")
+def chat_message(
+    request: Request,
+    message: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    chat_request = AssistantChatRequest(
+        message=message,
+    )
+
+    response = assistant_chat_service.chat(
+        db=db,
+        request=chat_request,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="chat.html",
+        context={
+            "message": message,
+            "answer": response.answer,
+        },
     )
