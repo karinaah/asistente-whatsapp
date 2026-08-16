@@ -199,3 +199,12 @@ body {
 .message-content {
     line-height: 1.5;
 }
+
+.empty-state {
+    padding: 20px;
+    background: white;
+    border: 1px dashed #cccccc;
+    border-radius: 12px;
+    color: #666666;
+    text-align: center;
+}

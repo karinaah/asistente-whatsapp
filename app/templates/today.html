@@ -7,12 +7,15 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container">    
+
         <nav>
             <a href="/web">Hoy</a>
             |
             <a href="/web/tasks">Tareas</a>
-        </nav>        
+            |
+            <a href="/web/chat">Chat</a>
+        </nav>
 
         <div class="header">
             <h1>AURA</h1>
@@ -60,16 +63,25 @@
                 </form>                
             </div>
 
+        {% else %}
+            <p class="empty-state">
+                No tienes tareas programadas para hoy.
+            </p>
         {% endfor %}
 
         <h2>No programadas</h2>
 
-
+        
         {% for task in plan.unscheduled_tasks %}
             <div class="unscheduled-task">
                 {{ task.title }}
             </div>
+        {% else %}
+            <p class="empty-state">
+                No tienes tareas pendientes de programar.
+            </p>
         {% endfor %}        
+
     </div>
 </body>
 </html>
