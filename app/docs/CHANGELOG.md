@@ -5,6 +5,57 @@ Todas las modificaciones importantes del proyecto serán documentadas en este ar
 El formato está inspirado en **Keep a Changelog** y las versiones siguen **Semantic Versioning**.
 
 ---
+## v1.1.0
+
+### Added
+
+- Primera interfaz web usable de AURA.
+- Vista `Hoy` conectada al `PlanningWorkflowService`.
+- Visualización de tareas programadas y no programadas.
+- Navegación web entre `Hoy`, `Tareas` y `Chat`.
+- Vista completa de gestión de tareas.
+- Creación de tareas desde la web.
+- Edición de tareas desde la web.
+- Completado de tareas desde la web.
+- Eliminación de tareas con confirmación.
+- Vista web de Chat integrada con `AssistantChatService`.
+- Soporte de memoria conversacional y follow-ups desde la interfaz web.
+- Archivos estáticos y estilos CSS para la interfaz.
+- Estados vacíos para planificación y listado de tareas.
+- Nuevas pruebas automatizadas para las rutas web principales.
+
+### Changed
+
+- AURA puede utilizarse durante el flujo principal diario sin depender de Swagger.
+- La Vista Hoy reutiliza el Planner y el perfil adaptativo existentes.
+- Completar una tarea desde la web actualiza el estado persistido y permite regenerar el plan.
+- Las tareas completadas se diferencian visualmente en la Vista Tareas.
+- El flujo web reutiliza los servicios y workflows existentes sin duplicar lógica del Core.
+
+### Testing
+
+- Se agregaron tests para:
+  - `/web`
+  - `/web/tasks`
+  - `/web/chat`
+- Suite automatizada completa: **88 tests passing**.
+- Validación manual completa del flujo:
+  - crear tarea;
+  - editar tarea;
+  - verla reflejada en Hoy;
+  - planificar mediante Chat;
+  - realizar follow-up contextual;
+  - completar tarea;
+  - comprobar replanificación;
+  - eliminar tarea.
+
+### Release
+
+AURA v1.1.0 transforma el núcleo conversacional estable de v1.0.1 en una aplicación web usable.
+
+El foco de esta versión fue exponer las capacidades ya existentes de planificación, recomendación, aprendizaje y conversación mediante una interfaz simple, manteniendo el Core desacoplado y sin incorporar todavía las capacidades planificadas para versiones posteriores como workspaces, persistencia multiusuario, Google Calendar o WhatsApp.
+
+---
 
 ## v1.0.1
 

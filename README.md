@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
-![Tests](https://img.shields.io/badge/tests-83%20passing-success)
-![Version](https://img.shields.io/badge/version-v1.0.0-orange)
+![Tests](https://img.shields.io/badge/tests-88%20passing-success)
+![Version](https://img.shields.io/badge/version-v1.1.0-orange)
 
 # AURA
 
@@ -373,34 +373,27 @@ Toda la documentación interactiva de los endpoints está disponible mediante Sw
 
 # Estado del proyecto
 
-Versión actual: **v1.0.0**
+Versión actual: **v1.1.0**
 
 Estado:
 
-- ✅ Planner Engine
-- ✅ Decision Engine
-- ✅ Learning Engine
-- ✅ Explanation Engine
-- ✅ Adaptive Profile
-- ✅ Workflow Services
-- ✅ Assistant Layer
-- ✅ Conversational Memory
-- ✅ Contextual Follow-ups
-- ✅ Persistencia
-- ✅ Suite automatizada de tests
-
-AURA v1.0.0 representa la primera versión estable del núcleo del asistente.
+- ✅ Web Interface
+- ✅ Today View
+- ✅ Task Management Web
+- ✅ Assistant Chat Web
 
 ---
 
 # Roadmap
 
-Después de v1.0.0, las posibles líneas de evolución incluyen:
+AURA v1.1.0 incorpora la primera interfaz web usable sobre el núcleo funcional desarrollado en v1.0.x.
 
+Las siguientes etapas del proyecto contemplan, entre otras capacidades:
+
+- mejoras progresivas de la experiencia web;
 - memoria conversacional por sesión y usuario;
 - contexto conversacional persistente;
 - referencias contextuales más avanzadas;
-- explicaciones conversacionales más naturales;
 - mejoras del aprendizaje adaptativo;
 - nuevas reglas de planificación y recomendación;
 - integración opcional con modelos de lenguaje;
@@ -409,13 +402,13 @@ Después de v1.0.0, las posibles líneas de evolución incluyen:
 - otras integraciones externas;
 - ampliación continua de la cobertura de pruebas.
 
-El roadmap completo se encuentra en `docs/roadmap.md`.
+El roadmap detallado y actualizado del proyecto se encuentra en `app/docs/product_roadmap.md`.
 
 ---
 
 # Limitaciones actuales
 
-AURA v1.0.0 establece el núcleo funcional del proyecto, pero todavía existen capacidades previstas para versiones posteriores.
+AURA v1.1.0 incorpora una interfaz web usable sobre el núcleo funcional del asistente, pero todavía existen capacidades previstas para versiones posteriores.
 
 Entre ellas:
 
@@ -423,7 +416,7 @@ Entre ellas:
 - todavía no existe aislamiento de memoria por usuario o sesión;
 - el reconocimiento de intención está basado en reglas;
 - las conversaciones contextuales soportadas son todavía limitadas;
-- las integraciones externas no forman parte del núcleo v1.0.0;
+- las integraciones externas como Google Calendar y WhatsApp todavía no están implementadas;
 - no se utiliza un modelo de lenguaje para generar o interpretar conversaciones.
 
 Estas limitaciones permiten mantener la primera versión determinista, explicable y completamente funcional sin servicios externos.
