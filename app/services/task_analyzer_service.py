@@ -1,7 +1,17 @@
 from datetime import date
 
-from app.config.task_analysis_rules import CATEGORY_KEYWORDS
-from app.models.task import Task, TaskCategory
+from app.config.task_analysis_rules import (
+    ACTIVITY_TYPE_KEYWORDS,
+    CATEGORY_KEYWORDS,
+    WORKSPACE_KEYWORDS,
+)
+from app.models.task import (
+    ActivityType,
+    Task,
+    TaskCategory,
+    TaskContext,
+    TaskWorkspace,
+)
 from app.services.temporal_parser import TemporalParser
 
 
@@ -45,6 +55,28 @@ class TaskAnalyzerService:
             and inferred_category is not None
         ):
             updates["category"] = inferred_category
+
+        inferred_activity_type = self._infer_activity_type(
+            searchable_text
+        )
+
+        if (
+            task.activity_type == ActivityType.other
+            and inferred_activity_type is not None
+        ):
+            updates["activity_type"] = inferred_activity_type
+
+        inferred_workspace = self._infer_workspace(
+            searchable_text
+        )
+
+        if inferred_workspace is not None:
+            updates["workspace"] = inferred_workspace
+
+            if inferred_workspace == TaskWorkspace.work:
+                updates["context"] = TaskContext.work
+            elif inferred_workspace == TaskWorkspace.personal:
+                updates["context"] = TaskContext.personal
 
         inferred_deadline = temporal_data["deadline"]
 
@@ -105,6 +137,32 @@ class TaskAnalyzerService:
                 for keyword in keywords
             ):
                 return category
+
+        return None
+
+    def _infer_activity_type(
+        self,
+        searchable_text: str,
+    ) -> ActivityType | None:
+        for activity_type, keywords in ACTIVITY_TYPE_KEYWORDS.items():
+            if any(
+                keyword in searchable_text
+                for keyword in keywords
+            ):
+                return activity_type
+
+        return None
+
+    def _infer_workspace(
+        self,
+        searchable_text: str,
+    ) -> TaskWorkspace | None:
+        for workspace, keywords in WORKSPACE_KEYWORDS.items():
+            if any(
+                keyword in searchable_text
+                for keyword in keywords
+            ):
+                return workspace
 
         return None
 

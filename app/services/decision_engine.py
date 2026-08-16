@@ -24,6 +24,9 @@ from app.services.recommendation_summary_service import (
 from app.services.decision_rules.adaptive_energy_rule import (
     AdaptiveEnergyRule,
 )
+from app.services.decision_rules.activity_type_rule import (
+    ActivityTypeRule,
+)
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -36,6 +39,7 @@ class DecisionEngine:
             OverdueRule(),
             EnergyRule(),
             FocusRule(),
+            ActivityTypeRule(),
             StressRule(),
             AdaptiveEnergyRule(),
         ]

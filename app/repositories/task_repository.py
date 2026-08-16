@@ -16,6 +16,8 @@ class TaskRepository:
             focus_demand=task.focus_demand.value,
             category=task.category.value,
             context=task.context.value,
+            workspace=task.workspace.value,
+            activity_type=task.activity_type.value,
             status=task.status.value,
             deadline=task.deadline,
             preferred_date=task.preferred_date,
@@ -101,6 +103,8 @@ class TaskRepository:
         focus_demand: str | None = None,
         category: str | None = None,
         context: str | None = None,
+        workspace: str | None = None,
+        activity_type: str | None = None,
         status: str | None = None,
         deadline=None,
         preferred_date: date | None = None,
@@ -140,6 +144,12 @@ class TaskRepository:
 
         if context is not None:
             task_db.context = context
+
+        if workspace is not None:
+            task_db.workspace = workspace
+
+        if activity_type is not None:
+            task_db.activity_type = activity_type
 
         if status is not None:
             task_db.status = status

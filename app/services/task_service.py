@@ -90,6 +90,12 @@ class TaskService:
             ),
             category=request.category.value if request.category else None,
             context=request.context.value if request.context else None,
+            workspace=request.workspace.value if request.workspace else None,
+            activity_type=(
+                request.activity_type.value
+                if request.activity_type
+                else None
+            ),
             status=request.status.value if request.status else None,
             deadline=request.deadline,
             preferred_date=request.preferred_date,

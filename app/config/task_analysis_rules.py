@@ -1,5 +1,9 @@
-from app.models.task import TaskCategory
-from app.models.task import PreferredTimeOfDay
+from app.models.task import (
+    ActivityType,
+    PreferredTimeOfDay,
+    TaskCategory,
+    TaskWorkspace,
+)
 
 CATEGORY_KEYWORDS: dict[TaskCategory, tuple[str, ...]] = {
     TaskCategory.work: (
@@ -50,6 +54,113 @@ CATEGORY_KEYWORDS: dict[TaskCategory, tuple[str, ...]] = {
         "tramite",
         "retirar",
         "buscar",
+    ),
+}
+
+ACTIVITY_TYPE_KEYWORDS: dict[
+    ActivityType,
+    tuple[str, ...],
+] = {
+    ActivityType.deep_work: (
+        "analizar",
+        "análisis",
+        "analisis",
+        "desarrollar",
+        "programar",
+        "investigar",
+        "informe",
+        "presentación",
+        "presentacion",
+        "propuesta",
+    ),
+    ActivityType.meeting: (
+        "reunión",
+        "reunion",
+        "meeting",
+        "llamada",
+        "videollamada",
+    ),
+    ActivityType.administrative: (
+        "correo",
+        "correos",
+        "responder",
+        "documentar",
+        "administrativo",
+        "administrativa",
+    ),
+    ActivityType.exercise: (
+        "ejercicio",
+        "gimnasio",
+        "yoga",
+        "correr",
+        "caminar",
+        "entrenar",
+    ),
+    ActivityType.errand: (
+        "comprar",
+        "supermercado",
+        "banco",
+        "pagar",
+        "trámite",
+        "tramite",
+        "retirar",
+        "buscar",
+    ),
+    ActivityType.study: (
+        "estudiar",
+        "estudio",
+        "examen",
+        "prueba",
+        "curso",
+        "clase",
+        "aprender",
+    ),
+    ActivityType.routine: (
+        "rutina",
+        "ordenar",
+        "limpiar",
+        "organizar casa",
+    ),
+    ActivityType.rest: (
+        "descansar",
+        "descanso",
+        "pausa",
+        "siesta",
+    ),
+}
+
+WORKSPACE_KEYWORDS: dict[
+    TaskWorkspace,
+    tuple[str, ...],
+] = {
+    TaskWorkspace.work: (
+        "trabajo",
+        "cliente",
+        "informe",
+        "proyecto",
+        "reunión",
+        "reunion",
+        "correo",
+        "correos",
+        "propuesta",
+        "presentación",
+        "presentacion",
+    ),
+    TaskWorkspace.personal: (
+        "personal",
+        "familia",
+        "casa",
+        "gimnasio",
+        "yoga",
+        "ejercicio",
+        "médico",
+        "medico",
+        "doctor",
+        "supermercado",
+        "comprar",
+        "banco",
+        "trámite",
+        "tramite",
     ),
 }
 

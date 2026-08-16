@@ -64,5 +64,25 @@ class IntentDetectionService:
             )
         ):
             return AssistantIntent.follow_up
-
+        if any(
+            keyword in message
+            for keyword in (
+                "preparar",
+                "hacer",
+                "enviar",
+                "comprar",
+                "ir al",
+                "ir a ",
+                "revisar",
+                "responder",
+                "estudiar",
+                "entrenar",
+                "llamar",
+                "agendar",
+                "crear tarea",
+                "agrega tarea",
+                "agregar tarea",
+            )
+        ):
+            return AssistantIntent.task_creation
         return AssistantIntent.unknown

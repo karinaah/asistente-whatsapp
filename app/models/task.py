@@ -9,21 +9,24 @@ class TaskPriority(str, Enum):
     medium = "media"
     high = "alta"
 
+
 class TaskEffort(str, Enum):
     low = "bajo"
     medium = "medio"
     high = "alto"
+
 
 class TaskFocusDemand(str, Enum):
     low = "bajo"
     medium = "medio"
     high = "alto"
 
+
 class TaskStatus(str, Enum):
     pending = "pendiente"
     in_progress = "en_progreso"
     completed = "completada"
-    cancelled = "cancelada"    
+    cancelled = "cancelada"
 
 
 class TaskCategory(str, Enum):
@@ -34,14 +37,34 @@ class TaskCategory(str, Enum):
     errands = "tramites"
     other = "otro"
 
+
 class TaskContext(str, Enum):
     work = "trabajo"
     personal = "personal"
+
+
+class TaskWorkspace(str, Enum):
+    work = "trabajo"
+    personal = "personal"
+
+
+class ActivityType(str, Enum):
+    deep_work = "deep_work"
+    meeting = "meeting"
+    administrative = "administrative"
+    exercise = "exercise"
+    errand = "errand"
+    study = "study"
+    routine = "routine"
+    rest = "rest"
+    other = "other"
+
 
 class PreferredTimeOfDay(str, Enum):
     morning = "mañana"
     afternoon = "tarde"
     evening = "noche"
+
 
 class Task(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -54,7 +77,9 @@ class Task(BaseModel):
     effort: TaskEffort = TaskEffort.medium
     focus_demand: TaskFocusDemand = TaskFocusDemand.medium
     category: TaskCategory = TaskCategory.other
-    context: TaskContext = TaskContext.personal 
+    context: TaskContext = TaskContext.personal
+    workspace: TaskWorkspace = TaskWorkspace.personal
+    activity_type: ActivityType = ActivityType.other
     status: TaskStatus = TaskStatus.pending
     deadline: datetime | None = None
     preferred_date: date | None = None
@@ -63,7 +88,8 @@ class Task(BaseModel):
     location: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    
+
+
 class TaskRequest(BaseModel):
     text: str = Field(min_length=1)
 
@@ -71,22 +97,33 @@ class TaskRequest(BaseModel):
 class TaskResponse(BaseModel):
     tasks: list[Task]
 
+
 class ExtractedTasks(BaseModel):
     tasks: list[Task]
 
+
 class TaskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
     description: str | None = None
-    estimated_minutes: int | None = Field(default=None, gt=0, le=1440)
+    estimated_minutes: int | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
+    )
     priority: TaskPriority | None = None
     effort: TaskEffort | None = None
     focus_demand: TaskFocusDemand | None = None
     category: TaskCategory | None = None
     context: TaskContext | None = None
+    workspace: TaskWorkspace | None = None
+    activity_type: ActivityType | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
     preferred_date: date | None = None
     preferred_time_of_day: PreferredTimeOfDay | None = None
     preferred_start_time: time | None = None
     location: str | None = None
-

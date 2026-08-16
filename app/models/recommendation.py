@@ -23,7 +23,8 @@ class RecommendationReasonCode(str, Enum):
     focus_match = "focus_match"
     high_stress_penalty = "high_stress_penalty"
     adaptive_low_energy_penalty = "adaptive_low_energy_penalty"
-
+    activity_type_match = "activity_type_match"
+    
 class RecommendationReason(BaseModel):
     code: RecommendationReasonCode
     message: str = Field(min_length=1)

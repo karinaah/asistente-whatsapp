@@ -12,7 +12,11 @@ from app.models.schedule import (
     PlanningResponse,
     ScheduledTask,
 )
-from app.models.task import Task
+from app.models.task import (
+    ActivityType,
+    Task,
+    TaskWorkspace,
+)
 
 def test_chat_planning(monkeypatch):
     service = AssistantChatService()
@@ -405,3 +409,68 @@ def test_chat_follow_up_returns_next_task(
     )
 
     assert "10:00" in response.answer    
+
+def test_chat_creates_task_from_natural_language(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    created_task = Task(
+        title="Preparar informe para el cliente mañana",
+        estimated_minutes=60,
+        workspace=TaskWorkspace.work,
+        activity_type=ActivityType.deep_work,
+    )
+
+    monkeypatch.setattr(
+        service.task_creation_workflow_service,
+        "create_from_text",
+        lambda db, text, reference_date: [
+            created_task
+        ],
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message=(
+                "Preparar informe para "
+                "el cliente mañana"
+            ),
+        ),
+    )
+
+    assert "creé la tarea" in response.answer.lower()
+    assert "workspace: trabajo" in response.answer.lower()
+    assert "deep_work" in response.answer.lower()    
+
+def test_chat_creates_personal_exercise_task(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    created_task = Task(
+        title="Ir al gimnasio mañana",
+        estimated_minutes=60,
+        workspace=TaskWorkspace.personal,
+        activity_type=ActivityType.exercise,
+    )
+
+    monkeypatch.setattr(
+        service.task_creation_workflow_service,
+        "create_from_text",
+        lambda db, text, reference_date: [
+            created_task
+        ],
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Ir al gimnasio mañana",
+        ),
+    )
+
+    assert "creé la tarea" in response.answer.lower()
+    assert "workspace: personal" in response.answer.lower()
+    assert "exercise" in response.answer.lower()    

@@ -70,16 +70,25 @@ def complete_task(
 @router.get("/web/tasks")
 def tasks_page(
     request: Request,
+    workspace: str | None = None,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
     tasks = task_service.get_all(db)
+
+    if workspace in {"trabajo", "personal"}:
+        tasks = [
+            task
+            for task in tasks
+            if task.workspace.value == workspace
+        ]
 
     return templates.TemplateResponse(
         request=request,
         name="tasks.html",
         context={
             "tasks": tasks,
+            "selected_workspace": workspace,
         },
     )
 
@@ -107,15 +116,20 @@ def create_task_from_web(
     estimated_minutes: int = Form(...),
     priority: str = Form("media"),
     category: str = Form("otro"),
+    workspace: str = Form("personal"),
+    activity_type: str = Form("other"),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
+
     task = Task(
         title=title,
         estimated_minutes=estimated_minutes,
         priority=priority,
         category=category,
-    )
+        workspace=workspace,
+        activity_type=activity_type,
+    )    
 
     task_service.create(
         db=db,
@@ -134,6 +148,8 @@ def edit_task_from_web(
     estimated_minutes: int = Form(...),
     priority: str = Form(...),
     category: str = Form(...),
+    workspace: str = Form(...),
+    activity_type: str = Form(...),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
@@ -142,6 +158,8 @@ def edit_task_from_web(
         estimated_minutes=estimated_minutes,
         priority=priority,
         category=category,
+        workspace=workspace,
+        activity_type=activity_type,
     )
 
     task_service.update(

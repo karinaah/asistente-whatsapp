@@ -208,3 +208,29 @@ body {
     color: #666666;
     text-align: center;
 }
+
+.workspace-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.workspace-filters a {
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: white;
+    color: #444444;
+    border: 1px solid #dddddd;
+    font-size: 14px;
+}
+
+.workspace-filters a:hover {
+    background: #eeeeee;
+}
+
+.workspace-filters a.active {
+    background: #222222;
+    color: white;
+    border-color: #222222;
+}

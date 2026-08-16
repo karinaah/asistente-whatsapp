@@ -35,6 +35,13 @@ from app.services.recommendation_history_service import (
 from app.services.conversation_memory_service import (
     ConversationMemoryService,
 )
+from app.repositories.task_repository import TaskRepository
+from app.services.mock_ai_service import MockAIService
+from app.services.task_analyzer_service import TaskAnalyzerService
+from app.services.task_creation_workflow_service import (
+    TaskCreationWorkflowService,
+)
+from app.services.temporal_parser import TemporalParser
 
 class AssistantChatService:
     def __init__(self) -> None:
@@ -67,7 +74,15 @@ class AssistantChatService:
         self.conversation_memory_service = (
             ConversationMemoryService()
         )
-
+        self.task_creation_workflow_service = (
+            TaskCreationWorkflowService(
+                ai_service=MockAIService(),
+                task_analyzer_service=TaskAnalyzerService(
+                    temporal_parser=TemporalParser(),
+                ),
+                task_repository=TaskRepository(),
+            )
+        )
     def chat(
         self,
         db: Session,
@@ -109,7 +124,11 @@ class AssistantChatService:
                 db=db,
                 request=request,
             )
-
+        if intent == AssistantIntent.task_creation:
+            return self._handle_task_creation(
+                db=db,
+                request=request,
+            )
 
         return AssistantChatResponse(
             answer="No entendí tu solicitud."
@@ -427,3 +446,44 @@ class AssistantChatService:
                 "en tu plan actual."
             )
         )
+    
+    def _handle_task_creation(
+        self,
+        db: Session,
+        request: AssistantChatRequest,
+    ) -> AssistantChatResponse:
+        tasks = (
+            self.task_creation_workflow_service
+            .create_from_text(
+                db=db,
+                text=request.message,
+                reference_date=request.plan_date,
+            )
+        )
+
+        if not tasks:
+            return AssistantChatResponse(
+                answer="No pude crear una tarea a partir de tu mensaje."
+            )
+
+        if len(tasks) == 1:
+            task = tasks[0]
+
+            return AssistantChatResponse(
+                answer=(
+                    f"Creé la tarea '{task.title}'. "
+                    f"Workspace: {task.workspace.value}. "
+                    f"Tipo de actividad: {task.activity_type.value}."
+                )
+            )
+
+        titles = ", ".join(
+            task.title
+            for task in tasks
+        )
+
+        return AssistantChatResponse(
+            answer=(
+                f"Creé {len(tasks)} tareas: {titles}."
+            )
+        )    

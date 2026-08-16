@@ -26,7 +26,10 @@ from app.services.decision_rules.focus_rule import FocusRule
 
 from app.models.human_state import StressLevel
 from app.services.decision_rules.stress_rule import StressRule
-
+from app.services.decision_rules.activity_type_rule import (
+    ActivityTypeRule,
+)
+from app.models.task import ActivityType
 def test_priority_rule_returns_reason_for_high_priority_task():
     rule = PriorityRule()
 
@@ -464,3 +467,89 @@ def test_stress_rule_penalizes_demanding_task_when_stress_is_high():
     )
     assert reasons[0].score == -45.0
     assert "estrés" in reasons[0].message.lower()    
+
+def test_activity_type_rule_returns_reason_for_deep_work_with_high_focus():
+    rule = ActivityTypeRule()
+
+    task = make_task(
+        title="Preparar informe",
+        estimated_minutes=60,
+        activity_type=ActivityType.deep_work,
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=scheduled_task.start_time,
+        plan=plan,
+        human_state=HumanState(
+            focus=FocusLevel.high,
+        ),
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert len(reasons) == 1
+    assert (
+        reasons[0].code
+        == RecommendationReasonCode.activity_type_match
+    )
+    assert reasons[0].score == 20.0
+
+
+def test_activity_type_rule_returns_no_reason_when_deep_work_focus_is_low():
+    rule = ActivityTypeRule()
+
+    task = make_task(
+        title="Preparar informe",
+        estimated_minutes=60,
+        activity_type=ActivityType.deep_work,
+    )
+
+    scheduled_task = ScheduledTask(
+        task=task,
+        start_time=datetime.fromisoformat(
+            "2026-08-01T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-01T11:00:00"
+        ),
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[scheduled_task],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    context = DecisionContext(
+        current_time=scheduled_task.start_time,
+        plan=plan,
+        human_state=HumanState(
+            focus=FocusLevel.low,
+        ),
+    )
+
+    reasons = rule.evaluate(
+        scheduled_task,
+        context,
+    )
+
+    assert reasons == []    

@@ -6,6 +6,9 @@ from app.repositories.task_repository import TaskRepository
 from app.services.ai_service import AIService
 from app.services.planner_service import PlannerService
 from app.services.task_analyzer_service import TaskAnalyzerService
+from app.services.task_creation_workflow_service import (
+    TaskCreationWorkflowService,
+)
 
 
 class AssistantService:
@@ -21,23 +24,29 @@ class AssistantService:
         self.task_repository = task_repository
         self.task_analyzer_service = task_analyzer_service
 
+        self.task_creation_workflow_service = (
+            TaskCreationWorkflowService(
+                ai_service=ai_service,
+                task_analyzer_service=task_analyzer_service,
+                task_repository=task_repository,
+            )
+        )
+
     def process(
         self,
         db: Session,
         request: AssistantRequest,
     ) -> PlanningResponse:
-        extracted_tasks = self.ai_service.extract_tasks(request.text)
-
-        analyzed_tasks = self.task_analyzer_service.analyze(
-            extracted_tasks,
-            reference_date=request.plan_date,
+        saved_tasks = (
+            self.task_creation_workflow_service
+            .create_from_text(
+                db=db,
+                text=request.text,
+                reference_date=request.plan_date,
+            )
         )
 
-        saved_tasks = []
 
-        for task in analyzed_tasks:
-            saved_task = self.task_repository.save(db, task)
-            saved_tasks.append(saved_task)
 
         planning_request = PlanningRequest(
             tasks=saved_tasks,
@@ -48,4 +57,6 @@ class AssistantService:
             busy_blocks=request.busy_blocks,
         )
 
-        return self.planner_service.create_plan(planning_request)
+        return self.planner_service.create_plan(
+            planning_request
+        )

@@ -56,6 +56,18 @@ class TaskDB(Base):
         nullable=False,
     )
 
+    workspace: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="personal",
+    )
+
+    activity_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="other",
+    )
+
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
