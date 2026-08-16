@@ -62,3 +62,36 @@ def complete_task(
         url="/web",
         status_code=303,
     )
+
+@router.get("/web/tasks")
+def tasks_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
+):
+    tasks = task_service.get_all(db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="tasks.html",
+        context={
+            "tasks": tasks,
+        },
+    )
+
+
+@router.post("/web/tasks/{task_id}/delete")
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
+):
+    task_service.delete(
+        db=db,
+        task_id=task_id,
+    )
+
+    return RedirectResponse(
+        url="/web/tasks",
+        status_code=303,
+    )

@@ -96,3 +96,29 @@ body {
 .complete-button:hover {
     opacity: 0.85;
 }
+
+.task-pendiente {
+    border-left: 4px solid #999999;
+}
+
+.task-en_progreso {
+    border-left: 4px solid #222222;
+}
+
+.task-completada {
+    border-left: 4px solid #999999;
+    opacity: 0.65;
+}
+
+.task-completada .task-title {
+    text-decoration: line-through;
+}
+
+.task-cancelada {
+    border-left: 4px solid #cccccc;
+    opacity: 0.5;
+}
+
+.task-cancelada .task-title {
+    text-decoration: line-through;
+}
