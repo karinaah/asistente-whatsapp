@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
 ![Tests](https://img.shields.io/badge/tests-88%20passing-success)
-![Version](https://img.shields.io/badge/version-v1.1.0-orange)
+![Version](https://img.shields.io/badge/version-v1.2.0-orange)
 
 # AURA
 
@@ -373,7 +373,7 @@ Toda la documentación interactiva de los endpoints está disponible mediante Sw
 
 # Estado del proyecto
 
-Versión actual: **v1.1.0**
+Versión actual: **v1.2.0**
 
 Estado:
 
@@ -381,21 +381,38 @@ Estado:
 - ✅ Today View
 - ✅ Task Management Web
 - ✅ Assistant Chat Web
+- ✅ Workspaces Trabajo / Personal
+- ✅ Tipos de actividad
+- ✅ Inferencia automática de workspace y tipo de actividad
+- ✅ Creación de tareas desde lenguaje natural en el Chat
+- ✅ Recomendaciones sensibles al tipo de actividad
+- ✅ Disponibilidad global para tareas personales y de trabajo
 
 ---
 
 # Roadmap
 
-AURA v1.1.0 incorpora la primera interfaz web usable sobre el núcleo funcional desarrollado en v1.0.x.
+AURA v1.2.0 amplía la interfaz web y el núcleo de decisión de v1.1.0, incorporando una separación explícita entre vida personal y trabajo sin fragmentar la planificación diaria.
+
+La versión incorpora:
+
+- workspaces `trabajo` y `personal`;
+- clasificación de tareas por tipo de actividad;
+- inferencia automática de `workspace` y `activity_type`;
+- sincronización entre `workspace` y contexto operativo;
+- filtros de tareas por workspace;
+- una única disponibilidad global para tareas personales y laborales;
+- reglas de recomendación sensibles al tipo de actividad;
+- creación de tareas desde lenguaje natural mediante Assistant Chat;
+- migración compatible con bases SQLite existentes.
 
 Las siguientes etapas del proyecto contemplan, entre otras capacidades:
 
-- mejoras progresivas de la experiencia web;
-- memoria conversacional por sesión y usuario;
-- contexto conversacional persistente;
-- referencias contextuales más avanzadas;
+- tareas flexibles y replanificación;
+- seguimientos y rutinas;
+- memoria persistente por usuario y sesión;
 - mejoras del aprendizaje adaptativo;
-- nuevas reglas de planificación y recomendación;
+- referencias contextuales más avanzadas;
 - integración opcional con modelos de lenguaje;
 - Google Calendar;
 - WhatsApp;
@@ -408,18 +425,21 @@ El roadmap detallado y actualizado del proyecto se encuentra en `app/docs/produc
 
 # Limitaciones actuales
 
-AURA v1.1.0 incorpora una interfaz web usable sobre el núcleo funcional del asistente, pero todavía existen capacidades previstas para versiones posteriores.
+AURA v1.2.0 permite organizar y planificar conjuntamente tareas personales y de trabajo, pero todavía existen capacidades previstas para versiones posteriores.
 
 Entre ellas:
 
 - la memoria conversacional no es persistente;
 - todavía no existe aislamiento de memoria por usuario o sesión;
-- el reconocimiento de intención está basado en reglas;
-- las conversaciones contextuales soportadas son todavía limitadas;
+- el reconocimiento de intención continúa basado en reglas;
+- la creación de tareas desde lenguaje natural depende actualmente de reglas y del servicio de extracción configurado;
+- las conversaciones contextuales soportadas todavía son limitadas;
+- todavía no existe replanificación avanzada de tareas flexibles;
 - las integraciones externas como Google Calendar y WhatsApp todavía no están implementadas;
-- no se utiliza un modelo de lenguaje para generar o interpretar conversaciones.
+- no se utiliza un modelo de lenguaje externo para generar o interpretar conversaciones.
 
-Estas limitaciones permiten mantener la primera versión determinista, explicable y completamente funcional sin servicios externos.
+Estas limitaciones mantienen AURA determinista, explicable y funcional sin depender de servicios externos obligatorios.
+
 
 ---
 

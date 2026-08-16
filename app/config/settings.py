@@ -7,7 +7,7 @@ load_dotenv()
 
 class Settings:
     app_name: str = os.getenv("APP_NAME", "AURA")
-    app_version: str = os.getenv("APP_VERSION", "1.1.0")
+    app_version: str = os.getenv("APP_VERSION", "1.2.0")
     environment: str = os.getenv("ENVIRONMENT", "development")
 
     USE_MOCK_AI: bool = (

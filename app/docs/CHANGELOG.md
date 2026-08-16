@@ -5,6 +5,65 @@ Todas las modificaciones importantes del proyecto serán documentadas en este ar
 El formato está inspirado en **Keep a Changelog** y las versiones siguen **Semantic Versioning**.
 
 ---
+## v1.2.0
+
+### Added
+
+- Workspaces `trabajo` y `personal` para separar ámbitos de las tareas.
+- Tipos de actividad mediante `ActivityType`, incluyendo `deep_work`, `meeting`, `administrative`, `exercise`, `errand`, `study`, `routine`, `rest` y `other`.
+- Persistencia de `workspace` y `activity_type` en SQLite.
+- Migración compatible con bases existentes de AURA v1.1.x.
+- Inferencia automática de `workspace` a partir del lenguaje natural de la tarea.
+- Inferencia automática de `activity_type`.
+- Sincronización del workspace inferido con el contexto operativo de la tarea.
+- Filtros web para visualizar todas las tareas, tareas de trabajo o tareas personales.
+- Edición de `workspace` y `activity_type` desde la interfaz web.
+- `ActivityTypeRule` para incorporar el tipo de actividad al Decision Engine.
+- Nuevo código de recomendación `activity_type_match`.
+- `TaskCreationWorkflowService` para centralizar extracción, análisis y persistencia de tareas creadas desde lenguaje natural.
+- Nueva intención conversacional `task_creation`.
+- Creación de tareas directamente desde Assistant Chat mediante lenguaje natural.
+
+### Changed
+
+- El Decision Engine considera ahora el tipo de actividad como señal adicional al recomendar tareas.
+- `AssistantService` reutiliza `TaskCreationWorkflowService` para evitar duplicación del flujo de creación.
+- Assistant Chat puede interpretar frases de acción como solicitudes de creación de tareas.
+- Trabajo y vida personal utilizan una disponibilidad temporal global compartida.
+- Los `busy_blocks` afectan a la planificación independientemente del workspace.
+- El workspace organiza y filtra tareas sin crear agendas temporales independientes.
+- El análisis automático de tareas incorpora categoría, información temporal, tipo de actividad y workspace.
+
+### Testing
+
+- Se agregaron tests para:
+  - inferencia automática de `activity_type`;
+  - inferencia automática de `workspace`;
+  - sincronización `workspace → context`;
+  - `ActivityTypeRule`;
+  - disponibilidad global entre tareas personales y de trabajo;
+  - creación de tareas desde Assistant Chat;
+  - creación conversacional de tareas de trabajo y personales.
+- Suite automatizada completa: **99 tests passing**.
+- Validación manual del flujo end-to-end:
+  - creación de una tarea de trabajo desde Chat;
+  - inferencia `workspace = trabajo`;
+  - inferencia `activity_type = deep_work`;
+  - creación de una tarea personal desde Chat;
+  - inferencia `workspace = personal`;
+  - inferencia `activity_type = exercise`;
+  - persistencia de ambas tareas;
+  - visualización en la interfaz web;
+  - filtrado correcto por workspace.
+
+### Release
+
+AURA v1.2.0 amplía el modelo de organización y decisión introducido en v1.1.0, permitiendo gestionar explícitamente tareas personales y laborales dentro de una misma planificación diaria.
+
+El foco de esta versión fue incorporar workspaces y tipos de actividad como información estructural de las tareas, utilizar esas señales en el análisis y las recomendaciones, y permitir la creación de tareas mediante lenguaje natural desde Assistant Chat, manteniendo una disponibilidad temporal global y una arquitectura desacoplada y explicable.
+
+---
+
 ## v1.1.0
 
 ### Added
