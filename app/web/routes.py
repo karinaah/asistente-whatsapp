@@ -1,7 +1,7 @@
 from datetime import date
 
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from app.services.planning_workflow_service import (
 )
 from app.models.schedule import PlanningFromDBRequest
 from app.services.task_service import TaskService
+from app.models.task import Task, TaskUpdate
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
@@ -89,6 +90,61 @@ def delete_task(
     task_service.delete(
         db=db,
         task_id=task_id,
+    )
+
+    return RedirectResponse(
+        url="/web/tasks",
+        status_code=303,
+    )
+
+
+@router.post("/web/tasks/create")
+def create_task_from_web(
+    title: str = Form(...),
+    estimated_minutes: int = Form(...),
+    priority: str = Form("media"),
+    category: str = Form("otro"),
+    db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
+):
+    task = Task(
+        title=title,
+        estimated_minutes=estimated_minutes,
+        priority=priority,
+        category=category,
+    )
+
+    task_service.create(
+        db=db,
+        task=task,
+    )
+
+    return RedirectResponse(
+        url="/web/tasks",
+        status_code=303,
+    )
+
+@router.post("/web/tasks/{task_id}/edit")
+def edit_task_from_web(
+    task_id: int,
+    title: str = Form(...),
+    estimated_minutes: int = Form(...),
+    priority: str = Form(...),
+    category: str = Form(...),
+    db: Session = Depends(get_db),
+    task_service: TaskService = Depends(get_task_service),
+):
+    request = TaskUpdate(
+        title=title,
+        estimated_minutes=estimated_minutes,
+        priority=priority,
+        category=category,
+    )
+
+    task_service.update(
+        db=db,
+        task_id=task_id,
+        request=request,
     )
 
     return RedirectResponse(

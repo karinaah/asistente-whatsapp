@@ -122,3 +122,46 @@ body {
 .task-cancelada .task-title {
     text-decoration: line-through;
 }
+
+.task-form {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 32px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.create-button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #222222;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.create-button:hover {
+    opacity: 0.85;
+}

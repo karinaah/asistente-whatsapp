@@ -18,11 +18,64 @@
 
         <p>Total de tareas: {{ tasks | length }}</p>
 
+        <h2>Nueva tarea</h2>
+
+        <form method="post" action="/web/tasks/create" class="task-form">
+
+            <div class="form-group">
+                <label for="title">Tarea</label>
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="estimated_minutes">Duración estimada (minutos)</label>
+                <input
+                    type="number"
+                    id="estimated_minutes"
+                    name="estimated_minutes"
+                    min="1"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="priority">Prioridad</label>
+                <select id="priority" name="priority">
+                    <option value="baja">Baja</option>
+                    <option value="media" selected>Media</option>
+                    <option value="alta">Alta</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="category">Categoría</label>
+                <select id="category" name="category">
+                    <option value="trabajo">Trabajo</option>
+                    <option value="estudio">Estudio</option>
+                    <option value="personal">Personal</option>
+                    <option value="salud">Salud</option>
+                    <option value="tramites">Trámites</option>
+                    <option value="otro" selected>Otro</option>
+                </select>
+            </div>
+
+
+            <button type="submit" class="create-button">
+                Crear tarea
+            </button>            
+        </form>
+
         {% for task in tasks %}
             <div class="task-card task-{{ task.status.value }}">
                 <div class="task-title">
                     {{ task.title }}
                 </div>
+
 
                 <p class="task-meta">
                     Estado: {{ task.status.value }}
@@ -30,8 +83,60 @@
                     Prioridad: {{ task.priority.value }}
                     |
                     Categoría: {{ task.category.value }}
-                </p>
-             
+                    |
+                    Duración: {{ task.estimated_minutes }} min
+                </p>                
+
+                <form method="post" action="/web/tasks/{{ task.id }}/edit" class="task-form">
+
+                    <div class="form-group">
+                        <label>Tarea</label>
+                        <input
+                            type="text"
+                            name="title"
+                            value="{{ task.title }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label>Duración estimada</label>
+                        <input
+                            type="number"
+                            name="estimated_minutes"
+                            value="{{ task.estimated_minutes }}"
+                            min="1"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label>Prioridad</label>
+                        <select name="priority">
+                            <option value="baja" {% if task.priority.value == "baja" %}selected{% endif %}>Baja</option>
+                            <option value="media" {% if task.priority.value == "media" %}selected{% endif %}>Media</option>
+                            <option value="alta" {% if task.priority.value == "alta" %}selected{% endif %}>Alta</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select name="category">
+                            <option value="trabajo" {% if task.category.value == "trabajo" %}selected{% endif %}>Trabajo</option>
+                            <option value="estudio" {% if task.category.value == "estudio" %}selected{% endif %}>Estudio</option>
+                            <option value="personal" {% if task.category.value == "personal" %}selected{% endif %}>Personal</option>
+                            <option value="salud" {% if task.category.value == "salud" %}selected{% endif %}>Salud</option>
+                            <option value="tramites" {% if task.category.value == "tramites" %}selected{% endif %}>Trámites</option>
+                            <option value="otro" {% if task.category.value == "otro" %}selected{% endif %}>Otro</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="create-button">
+                        Guardar cambios
+                    </button>
+                </form>
+
+
 
                 {% if task.status.value != "completada" %}
                     <form method="post" action="/web/tasks/{{ task.id }}/complete">
