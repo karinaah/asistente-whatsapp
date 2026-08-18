@@ -118,6 +118,7 @@ def create_task_from_web(
     category: str = Form("otro"),
     workspace: str = Form("personal"),
     activity_type: str = Form("other"),
+    flexibility: str = Form("flexible"),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
@@ -129,6 +130,7 @@ def create_task_from_web(
         category=category,
         workspace=workspace,
         activity_type=activity_type,
+        flexibility=flexibility,
     )    
 
     task_service.create(
@@ -150,6 +152,7 @@ def edit_task_from_web(
     category: str = Form(...),
     workspace: str = Form(...),
     activity_type: str = Form(...),
+    flexibility: str = Form(...),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
@@ -160,6 +163,7 @@ def edit_task_from_web(
         category=category,
         workspace=workspace,
         activity_type=activity_type,
+        flexibility=flexibility,
     )
 
     task_service.update(

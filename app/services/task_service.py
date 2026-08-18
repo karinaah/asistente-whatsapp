@@ -96,6 +96,11 @@ class TaskService:
                 if request.activity_type
                 else None
             ),
+            flexibility=(
+                request.flexibility.value
+                if request.flexibility
+                else None
+            ),
             status=request.status.value if request.status else None,
             deadline=request.deadline,
             preferred_date=request.preferred_date,

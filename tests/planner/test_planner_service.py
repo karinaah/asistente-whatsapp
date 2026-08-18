@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime,  time
 
 from app.models.schedule import PlanningRequest
 from app.models.time_block import BlockType
@@ -12,6 +12,11 @@ from app.models.planning_reason import (
     PlanningReasonCode,
 )
 from app.models.task import Task
+
+from app.models.task import Task, TaskFlexibility
+from app.models.time_block import BlockType, TimeBlock
+
+
 
 def test_single_task_is_scheduled_at_day_start():
     planner = PlannerService()
@@ -604,3 +609,77 @@ def test_task_is_not_scheduled_after_deadline():
         response.unscheduled_tasks[0].title
         == "Revisar presupuesto urgente"
     )    
+
+def test_fixed_task_is_not_moved_if_preferred_time_is_busy():
+    planner = PlannerService()
+
+    task = Task(
+        title="Reunión fija",
+        estimated_minutes=60,
+        preferred_date=date.fromisoformat("2026-08-17"),
+        preferred_start_time=time.fromisoformat("10:00"),
+        flexibility=TaskFlexibility.fixed,
+    )
+
+    busy_block = TimeBlock(
+        start_time=datetime.fromisoformat(
+            "2026-08-17T10:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-17T11:00:00"
+        ),
+        title="Bloque ocupado",
+        block_type=BlockType.EVENT,
+    )
+
+    request = PlanningRequest(
+        tasks=[task],
+        plan_date=date.fromisoformat("2026-08-17"),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[busy_block],
+    )
+
+    plan = planner.create_plan(request)
+
+    assert len(plan.scheduled_tasks) == 0
+    assert len(plan.unscheduled_tasks) == 1
+    assert plan.unscheduled_tasks[0].title == "Reunión fija"    
+
+def test_semi_flexible_task_stays_inside_preferred_time_of_day():
+    planner = PlannerService()
+
+    task = Task(
+        title="Entrenamiento",
+        estimated_minutes=60,
+        preferred_date=date.fromisoformat("2026-08-17"),
+        preferred_time_of_day="tarde",
+        flexibility=TaskFlexibility.semi_flexible,
+    )
+
+    busy_block = TimeBlock(
+        start_time=datetime.fromisoformat(
+            "2026-08-17T12:00:00"
+        ),
+        end_time=datetime.fromisoformat(
+            "2026-08-17T17:30:00"
+        ),
+        title="Bloque ocupado",
+        block_type=BlockType.EVENT,
+    )
+
+    request = PlanningRequest(
+        tasks=[task],
+        plan_date=date.fromisoformat("2026-08-17"),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[busy_block],
+    )
+
+    plan = planner.create_plan(request)
+
+    assert len(plan.scheduled_tasks) == 0
+    assert len(plan.unscheduled_tasks) == 1
+    assert plan.unscheduled_tasks[0].title == "Entrenamiento"    

@@ -68,6 +68,13 @@ class TaskDB(Base):
         default="other",
     )
 
+
+    flexibility: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="flexible",
+    )
+
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

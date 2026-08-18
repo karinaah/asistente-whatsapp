@@ -18,6 +18,7 @@ class TaskRepository:
             context=task.context.value,
             workspace=task.workspace.value,
             activity_type=task.activity_type.value,
+            flexibility=task.flexibility.value,
             status=task.status.value,
             deadline=task.deadline,
             preferred_date=task.preferred_date,
@@ -105,6 +106,7 @@ class TaskRepository:
         context: str | None = None,
         workspace: str | None = None,
         activity_type: str | None = None,
+        flexibility: str | None = None,
         status: str | None = None,
         deadline=None,
         preferred_date: date | None = None,
@@ -150,6 +152,9 @@ class TaskRepository:
 
         if activity_type is not None:
             task_db.activity_type = activity_type
+
+        if flexibility is not None:
+            task_db.flexibility = flexibility            
 
         if status is not None:
             task_db.status = status

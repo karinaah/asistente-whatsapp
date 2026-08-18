@@ -59,6 +59,10 @@ class ActivityType(str, Enum):
     rest = "rest"
     other = "other"
 
+class TaskFlexibility(str, Enum):
+    flexible = "flexible"
+    semi_flexible = "semi_flexible"
+    fixed = "fixed"
 
 class PreferredTimeOfDay(str, Enum):
     morning = "mañana"
@@ -80,6 +84,7 @@ class Task(BaseModel):
     context: TaskContext = TaskContext.personal
     workspace: TaskWorkspace = TaskWorkspace.personal
     activity_type: ActivityType = ActivityType.other
+    flexibility: TaskFlexibility = TaskFlexibility.flexible
     status: TaskStatus = TaskStatus.pending
     deadline: datetime | None = None
     preferred_date: date | None = None
@@ -121,9 +126,11 @@ class TaskUpdate(BaseModel):
     context: TaskContext | None = None
     workspace: TaskWorkspace | None = None
     activity_type: ActivityType | None = None
+    flexibility: TaskFlexibility | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
     preferred_date: date | None = None
     preferred_time_of_day: PreferredTimeOfDay | None = None
     preferred_start_time: time | None = None
     location: str | None = None
+

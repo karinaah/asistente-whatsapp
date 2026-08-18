@@ -119,6 +119,16 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="flexibility">Flexibilidad</label>
+                <select id="flexibility" name="flexibility">
+                    <option value="flexible" selected>Flexible</option>
+                    <option value="semi_flexible">Semi flexible</option>
+                    <option value="fixed">Fija</option>
+                </select>
+            </div>
+
+
             <button type="submit" class="create-button">
                 Crear tarea
             </button>
@@ -144,7 +154,11 @@
                     |
                     Actividad: {{ task.activity_type.value }}
                     |
+                    Flexibilidad: {{ task.flexibility.value }}
+                    |
                     Duración: {{ task.estimated_minutes }} min
+
+
                 </p>
 
                 <form
@@ -218,6 +232,30 @@
                         </select>
                     </div>
 
+
+                    <div class="form-group">
+                        <label>Flexibilidad</label>
+                        <select name="flexibility">
+                            <option
+                                value="flexible"
+                                {% if task.flexibility.value == "flexible" %}selected{% endif %}
+                            >
+                                Flexible
+                            </option>
+                            <option
+                                value="semi_flexible"
+                                {% if task.flexibility.value == "semi_flexible" %}selected{% endif %}
+                            >
+                                Semi flexible
+                            </option>
+                            <option
+                                value="fixed"
+                                {% if task.flexibility.value == "fixed" %}selected{% endif %}
+                            >
+                                Fija
+                            </option>
+                        </select>
+                    </div>                    
 
                     <button type="submit" class="create-button">
                         Guardar cambios

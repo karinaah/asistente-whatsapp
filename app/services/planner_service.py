@@ -10,7 +10,7 @@ from app.models.time_block import BlockType, TimeBlock
 from app.services.task_sorter import TaskSorter
 from app.services.scoring_engine import ScoringEngine
 from app.models.learning_insight import LearningInsight
-from app.models.task import Task
+from app.models.task import Task, TaskFlexibility
 from app.services.estimation_adjustment_service import (
     EstimationAdjustmentService,
 )
@@ -155,6 +155,7 @@ class PlannerService:
                 key=lambda block: block.start_time
             )
 
+
             available_slots = self._find_available_slots(
                 current_time=task_day_start,
                 task_duration=task_duration,
@@ -162,6 +163,69 @@ class PlannerService:
                 break_minutes=request.break_minutes,
                 day_end=task_day_end,
             )
+
+
+            if (
+                task.flexibility == TaskFlexibility.fixed
+                and task.preferred_start_time is not None
+            ):
+                fixed_start = datetime.combine(
+                    task_date,
+                    task.preferred_start_time,
+                )
+
+                available_slots = [
+                    slot
+                    for slot in available_slots
+                    if slot.start_time == fixed_start
+                ]
+
+
+            if (
+                task.flexibility == TaskFlexibility.semi_flexible
+                and task.preferred_time_of_day is not None
+            ):
+                preferred_time = task.preferred_time_of_day.value
+
+                preferred_ranges = {
+                    "mañana": (5, 12),
+                    "tarde": (12, 18),
+                    "noche": (18, 24),
+                }
+
+                preferred_range = preferred_ranges.get(
+                    preferred_time
+                )
+
+                if preferred_range is not None:
+                    range_start_hour, range_end_hour = (
+                        preferred_range
+                    )
+
+                    range_start = datetime.combine(
+                        task_date,
+                        time(hour=range_start_hour),
+                    )
+
+                    range_end = datetime.combine(
+                        task_date,
+                        time.min,
+                    ) + timedelta(
+                        hours=range_end_hour,
+                    )
+
+                    available_slots = [
+                        slot
+                        for slot in available_slots
+                        if (
+                            slot.start_time >= range_start
+                            and (
+                                slot.start_time
+                                + task_duration
+                            ) <= range_end
+                        )
+                    ]
+
 
 
             if not available_slots:
