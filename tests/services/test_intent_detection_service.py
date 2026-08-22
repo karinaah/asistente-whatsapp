@@ -78,3 +78,12 @@ def test_detects_replanning_intent():
     )
 
     assert intent == AssistantIntent.replanning    
+
+def test_detects_active_task_delay_intent():
+    service = IntentDetectionService()
+
+    intent = service.detect(
+        "Me faltan 30 minutos"
+    )
+
+    assert intent == AssistantIntent.active_task_delay    

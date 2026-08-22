@@ -25,6 +25,22 @@ class IntentDetectionService:
         ):
             return AssistantIntent.replanning
 
+        if any(
+            phrase in message
+            for phrase in (
+                "me falta",
+                "me faltan",
+                "necesito más tiempo",
+                "necesito mas tiempo",
+                "necesito",
+                "me atrasé",
+                "me atrase",
+                "voy atrasado",
+                "voy atrasada",
+            )
+        ):
+            return AssistantIntent.active_task_delay
+
 
         if any(
             keyword in message

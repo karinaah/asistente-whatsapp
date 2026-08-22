@@ -17,7 +17,7 @@ from app.models.task import (
     Task,
     TaskWorkspace,
 )
-
+import re
 
 
 def test_chat_planning(monkeypatch):
@@ -517,3 +517,164 @@ def test_chat_replanning(monkeypatch):
 
     assert "reorganicé" in response.answer.lower()
     assert "tarea pendiente" in response.answer.lower()    
+
+def test_find_active_scheduled_task():
+    service = AssistantChatService()
+
+    task_a = Task(
+        title="Tarea A",
+        estimated_minutes=60,
+    )
+
+    task_b = Task(
+        title="Tarea B",
+        estimated_minutes=60,
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=task_a,
+                start_time=datetime.fromisoformat(
+                    "2026-08-22T10:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-22T11:00:00"
+                ),
+            ),
+            ScheduledTask(
+                task=task_b,
+                start_time=datetime.fromisoformat(
+                    "2026-08-22T11:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-22T12:00:00"
+                ),
+            ),
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    active_task = service._find_active_scheduled_task(
+        plan=plan,
+        now=datetime.fromisoformat(
+            "2026-08-22T11:20:00"
+        ),
+    )
+
+    assert active_task is not None
+    assert active_task.task.title == "Tarea B"    
+
+
+def test_extract_remaining_minutes():
+    service = AssistantChatService()
+
+    assert (
+        service._extract_remaining_minutes(
+            "Me faltan 30 minutos"
+        )
+        == 30
+    )
+
+
+def test_extract_remaining_minutes_short_form():
+    service = AssistantChatService()
+
+    assert (
+        service._extract_remaining_minutes(
+            "Necesito 45 min más"
+        )
+        == 45
+    )
+
+
+def test_extract_remaining_minutes_from_hours():
+    service = AssistantChatService()
+
+    assert (
+        service._extract_remaining_minutes(
+            "Me falta 1 hora"
+        )
+        == 60
+    )
+
+
+def test_extract_remaining_minutes_from_hours_and_minutes():
+    service = AssistantChatService()
+
+    assert (
+        service._extract_remaining_minutes(
+            "Necesito 1 hora 30 minutos"
+        )
+        == 90
+    )    
+
+def test_chat_active_task_delay(monkeypatch):
+    service = AssistantChatService()
+
+    active_task = Task(
+        id=12,
+        title="Preparar informe",
+        estimated_minutes=60,
+        status="en_progreso",
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=active_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-22T11:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-22T12:00:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    service.conversation_memory_service.set_last_plan(
+        plan
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_find_active_scheduled_task",
+        lambda plan, now: plan.scheduled_tasks[0],
+    )
+
+    fake_replanned = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=active_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-22T11:30:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-22T12:00:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        lambda db, request: fake_replanned,
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Me faltan 30 minutos",
+        ),
+    )
+
+    assert "30 minutos" in response.answer.lower()
+    assert "preparar informe" in response.answer.lower()
+    assert "reorganicé" in response.answer.lower()    

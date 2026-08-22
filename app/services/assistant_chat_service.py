@@ -45,6 +45,7 @@ from app.services.task_creation_workflow_service import (
 )
 from app.services.temporal_parser import TemporalParser
 from app.services.replanning_service import ReplanningService
+import re
 
 class AssistantChatService:
     def __init__(self) -> None:
@@ -115,6 +116,11 @@ class AssistantChatService:
                 request=request,
             )
 
+        if intent == AssistantIntent.active_task_delay:
+            return self._handle_active_task_delay(
+                db=db,
+                request=request,
+            )
 
         if intent == AssistantIntent.recommendation:
             return self._handle_recommendation(
@@ -306,6 +312,116 @@ class AssistantChatService:
 
 
 
+    def _handle_active_task_delay(
+        self,
+        db: Session,
+        request: AssistantChatRequest,
+    ) -> AssistantChatResponse:
+        context = (
+            self.conversation_memory_service
+            .get_context()
+        )
+
+        plan = context.last_plan
+
+        if plan is None or not plan.scheduled_tasks:
+            return AssistantChatResponse(
+                answer=(
+                    "No tengo un plan reciente para "
+                    "identificar qué tarea estás haciendo."
+                )
+            )
+
+        remaining_minutes = (
+            self._extract_remaining_minutes(
+                request.message
+            )
+        )
+
+        if remaining_minutes is None:
+            return AssistantChatResponse(
+                answer=(
+                    "¿Cuánto tiempo crees que te falta "
+                    "para terminar la tarea?"
+                )
+            )
+
+        now = datetime.now()
+
+        active_scheduled = (
+            self._find_active_scheduled_task(
+                plan=plan,
+                now=now,
+            )
+        )
+
+        if active_scheduled is None:
+            return AssistantChatResponse(
+                answer=(
+                    "No pude identificar una tarea activa "
+                    "en tu plan actual."
+                )
+            )
+
+        active_task = active_scheduled.task
+
+        if active_task.id is None:
+            return AssistantChatResponse(
+                answer=(
+                    "No pude identificar correctamente "
+                    "la tarea activa para reorganizar el día."
+                )
+            )
+
+        replanning_request = ReplanningRequest(
+            plan_date=request.plan_date,
+            planning_start_time=now.time().replace(
+                second=0,
+                microsecond=0,
+            ),
+            active_task_id=active_task.id,
+            remaining_minutes=remaining_minutes,
+            day_end_hour=request.day_end_hour,
+            break_minutes=request.break_minutes,
+            busy_blocks=request.busy_blocks,
+        )
+
+        result = self.replanning_service.replan(
+            db=db,
+            request=replanning_request,
+        )
+
+        self.conversation_memory_service.set_last_plan(
+            result
+        )
+
+        scheduled_tasks = sorted(
+            result.scheduled_tasks,
+            key=lambda scheduled: scheduled.start_time,
+        )
+
+        parts = [
+            (
+                f"{scheduled.task.title} "
+                f"a las "
+                f"{scheduled.start_time.strftime('%H:%M')}"
+            )
+            for scheduled in scheduled_tasks
+        ]
+
+        answer = (
+            f"Entendido. Consideraré que te quedan "
+            f"{remaining_minutes} minutos en "
+            f"{active_task.title}. "
+            f"Reorganicé lo que queda de tu día: "
+            + "; ".join(parts)
+            + "."
+        )
+
+        return AssistantChatResponse(
+            answer=answer
+        )
+
     def _handle_recommendation(
         self,
         db: Session,
@@ -452,7 +568,62 @@ class AssistantChatService:
         return AssistantChatResponse(
             answer=answer
         )
-    
+
+    def _extract_remaining_minutes(
+        self,
+        message: str,
+    ) -> int | None:
+        normalized_message = message.lower()
+
+        hours_match = re.search(
+            r"(\d+(?:[.,]\d+)?)\s*(?:horas?|hrs?|h)\b",
+            normalized_message,
+        )
+
+        minutes_match = re.search(
+            r"(\d+)\s*(?:minutos?|mins?|min)\b",
+            normalized_message,
+        )
+
+        total_minutes = 0
+
+        if hours_match:
+            hours = float(
+                hours_match.group(1).replace(",", ".")
+            )
+            total_minutes += round(hours * 60)
+
+        if minutes_match:
+            total_minutes += int(
+                minutes_match.group(1)
+            )
+
+        return total_minutes or None
+
+
+
+
+    def _find_active_scheduled_task(
+        self,
+        plan,
+        now: datetime,
+    ):
+        scheduled_tasks = sorted(
+            plan.scheduled_tasks,
+            key=lambda scheduled: scheduled.start_time,
+        )
+
+        for scheduled in scheduled_tasks:
+            if (
+                scheduled.start_time
+                <= now
+                < scheduled.end_time
+            ):
+                return scheduled
+
+        return None
+
+
     def _handle_follow_up(
         self,
         db: Session,
