@@ -53,6 +53,7 @@ class PlanningWorkflowService:
             tasks=tasks,
             plan_date=request.plan_date,
             day_start_hour=request.day_start_hour,
+            planning_start_time=request.planning_start_time,
             day_end_hour=request.day_end_hour,
             break_minutes=request.break_minutes,
             busy_blocks=request.busy_blocks,

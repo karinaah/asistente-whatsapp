@@ -683,3 +683,72 @@ def test_semi_flexible_task_stays_inside_preferred_time_of_day():
     assert len(plan.scheduled_tasks) == 0
     assert len(plan.unscheduled_tasks) == 1
     assert plan.unscheduled_tasks[0].title == "Entrenamiento"    
+
+def test_planning_start_time_prevents_scheduling_in_the_past():
+    planner = PlannerService()
+
+    task = Task(
+        title="Tarea de la tarde",
+        estimated_minutes=60,
+    )
+
+    request = PlanningRequest(
+        tasks=[task],
+        plan_date=date.fromisoformat("2026-08-22"),
+        day_start_hour=8,
+        planning_start_time=time.fromisoformat("14:37"),
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    plan = planner.create_plan(request)
+
+    assert len(plan.scheduled_tasks) == 1
+    assert (
+        plan.scheduled_tasks[0].start_time
+        >= datetime.fromisoformat("2026-08-22T14:37:00")
+    )    
+
+def test_in_progress_task_is_scheduled_before_pending_task():
+    planner = PlannerService()
+
+    in_progress_task = Task(
+        title="Tarea en progreso",
+        estimated_minutes=60,
+        status="en_progreso",
+        priority="media",
+    )
+
+    pending_task = Task(
+        title="Tarea pendiente",
+        estimated_minutes=60,
+        status="pendiente",
+        priority="media",
+    )
+
+    request = PlanningRequest(
+        tasks=[
+            pending_task,
+            in_progress_task,
+        ],
+        plan_date=date.fromisoformat("2026-08-22"),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    plan = planner.create_plan(request)
+
+    assert len(plan.scheduled_tasks) == 2
+
+    assert (
+        plan.scheduled_tasks[0].task.title
+        == "Tarea en progreso"
+    )
+
+    assert (
+        plan.scheduled_tasks[1].task.title
+        == "Tarea pendiente"
+    )    

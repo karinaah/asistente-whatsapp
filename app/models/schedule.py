@@ -1,5 +1,4 @@
-from datetime import date, datetime
-
+from datetime import date, datetime, time
 from pydantic import BaseModel, Field
 
 from app.models.task import Task, TaskContext
@@ -17,8 +16,9 @@ class ScheduledTask(BaseModel):
 
 class PlanningRequest(BaseModel):
     tasks: list[Task]
-    plan_date: date = Field(default_factory=date.today)
+    plan_date: date = Field(default_factory=date.today) 
     day_start_hour: int = Field(default=8, ge=0, le=23)
+    planning_start_time: time | None = None
     day_end_hour: int = Field(default=20, ge=1, le=24)
     break_minutes: int = Field(default=15, ge=0, le=120)
     busy_blocks: list[TimeBlock] = Field(default_factory=list)
@@ -32,6 +32,7 @@ class PlanningResponse(BaseModel):
 class PlanningFromDBRequest(BaseModel):
     plan_date: date = Field(default_factory=date.today)
     day_start_hour: int = Field(default=8, ge=0, le=23)
+    planning_start_time: time | None = None
     day_end_hour: int = Field(default=20, ge=1, le=24)
     break_minutes: int = Field(default=15, ge=0, le=120)
     busy_blocks: list[TimeBlock] = Field(default_factory=list)

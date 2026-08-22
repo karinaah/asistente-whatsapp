@@ -47,11 +47,16 @@ class PlannerService:
         request: PlanningRequest,
         adaptive_profile: AdaptiveProfile | None = None,
     ) -> PlanningResponse:
-        current_time = datetime.combine(
-            request.plan_date,
-            time(hour=request.day_start_hour),
-        )
-
+        if request.planning_start_time is not None:
+            current_time = datetime.combine(
+                request.plan_date,
+                request.planning_start_time,
+            )
+        else:
+            current_time = datetime.combine(
+                request.plan_date,
+                time(hour=request.day_start_hour),
+            )
 
         tasks_to_plan = request.tasks
 
@@ -103,6 +108,12 @@ class PlannerService:
                 task_date,
                 time(hour=request.day_start_hour),
             )
+
+            if task_date == request.plan_date:
+                task_day_start = max(
+                    task_day_start,
+                    current_time,
+                )
 
             if task.preferred_start_time is not None:
                 preferred_datetime = datetime.combine(
