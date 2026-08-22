@@ -5,6 +5,7 @@ from app.models.task import Task
 from app.services.replanning_service import ReplanningService
 from app.models.replanning import ReplanningRequest
 
+
 def test_replan_from_time_starts_at_requested_time(
     monkeypatch,
 ):
@@ -15,49 +16,34 @@ def test_replan_from_time_starts_at_requested_time(
         estimated_minutes=60,
     )
 
-    expected_plan = PlanningResponse(
-        scheduled_tasks=[
-            ScheduledTask(
-                task=task,
-                start_time=datetime.fromisoformat(
-                    "2026-08-22T14:37:00"
-                ),
-                end_time=datetime.fromisoformat(
-                    "2026-08-22T15:37:00"
-                ),
-            )
-        ],
-        unscheduled_tasks=[],
-        timeline=[],
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_plannable",
+        lambda db: [task],
     )
 
-    def fake_create_plan_from_db(
-        db,
-        request,
-    ):
-        assert request.plan_date == date.fromisoformat(
-            "2026-08-22"
-        )
-        assert (
-            request.planning_start_time
-            == time.fromisoformat("14:37")
-        )
-
-        return expected_plan
-
     monkeypatch.setattr(
-        service.planning_workflow_service,
-        "create_plan_from_db",
-        fake_create_plan_from_db,
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db: None,
     )
 
     result = service.replan_from_time(
         db=None,
         plan_date=date.fromisoformat("2026-08-22"),
         planning_start_time=time.fromisoformat("14:37"),
+        day_end_hour=20,
+        break_minutes=0,
     )
 
-    assert result == expected_plan
+    assert len(result.scheduled_tasks) == 1
+
+    assert (
+        result.scheduled_tasks[0].start_time
+        == datetime.fromisoformat(
+            "2026-08-22T14:37:00"
+        )
+    )
 
 def test_replan_from_time_does_not_schedule_tasks_before_now(
     monkeypatch,
@@ -388,3 +374,61 @@ def test_replan_uses_remaining_minutes_for_active_task(
     ).total_seconds() == 45 * 60
 
     assert active_task.estimated_minutes == 90    
+
+def test_replan_excludes_tasks_for_future_dates(
+    monkeypatch,
+):
+    service = ReplanningService()
+
+    today_task = Task(
+        id=20,
+        title="Tarea de hoy",
+        estimated_minutes=60,
+        preferred_date=date.fromisoformat(
+            "2026-08-22"
+        ),
+    )
+
+    tomorrow_task = Task(
+        id=21,
+        title="Tarea de mañana",
+        estimated_minutes=60,
+        preferred_date=date.fromisoformat(
+            "2026-08-23"
+        ),
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_all",
+        lambda db: [
+            today_task,
+            tomorrow_task,
+        ],
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db: None,
+    )
+
+    result = service.replan_from_time(
+        db=None,
+        plan_date=date.fromisoformat(
+            "2026-08-22"
+        ),
+        planning_start_time=time.fromisoformat(
+            "10:59"
+        ),
+        day_end_hour=20,
+        break_minutes=0,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in result.scheduled_tasks
+    }
+
+    assert "Tarea de hoy" in scheduled_titles
+    assert "Tarea de mañana" not in scheduled_titles    

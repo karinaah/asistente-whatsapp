@@ -11,6 +11,22 @@ class IntentDetectionService:
         message = message.lower()
 
         if any(
+            phrase in message
+            for phrase in (
+                "replanifica",
+                "reorganiza",
+                "reorganizar",
+                "replanear",
+                "replantea",
+                "reorganiza lo que queda",
+                "reorganiza mi día",
+                "reorganiza mi dia",
+            )
+        ):
+            return AssistantIntent.replanning
+
+
+        if any(
             keyword in message
             for keyword in (
                 "plan",

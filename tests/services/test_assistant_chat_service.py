@@ -18,6 +18,8 @@ from app.models.task import (
     TaskWorkspace,
 )
 
+
+
 def test_chat_planning(monkeypatch):
     service = AssistantChatService()
 
@@ -474,3 +476,44 @@ def test_chat_creates_personal_exercise_task(
     assert "creé la tarea" in response.answer.lower()
     assert "workspace: personal" in response.answer.lower()
     assert "exercise" in response.answer.lower()    
+
+
+def test_chat_replanning(monkeypatch):
+    service = AssistantChatService()
+
+    task = Task(
+        title="Tarea pendiente",
+        estimated_minutes=60,
+    )
+
+    fake_plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-22T15:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-22T16:00:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        lambda db, request: fake_plan,
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Reorganiza lo que me queda del día",
+        ),
+    )
+
+    assert "reorganicé" in response.answer.lower()
+    assert "tarea pendiente" in response.answer.lower()    

@@ -69,3 +69,12 @@ def test_detect_follow_up_intent():
         )
         == AssistantIntent.follow_up
     )    
+
+def test_detects_replanning_intent():
+    service = IntentDetectionService()
+
+    intent = service.detect(
+        "Reorganiza lo que me queda del día"
+    )
+
+    assert intent == AssistantIntent.replanning    

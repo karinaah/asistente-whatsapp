@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.assistant_chat import (
@@ -8,6 +9,7 @@ from app.models.assistant_intent import (
     AssistantIntent,
 )
 from app.models.schedule import PlanningFromDBRequest
+from app.models.replanning import ReplanningRequest
 from app.services.intent_detection_service import (
     IntentDetectionService,
 )
@@ -42,6 +44,7 @@ from app.services.task_creation_workflow_service import (
     TaskCreationWorkflowService,
 )
 from app.services.temporal_parser import TemporalParser
+from app.services.replanning_service import ReplanningService
 
 class AssistantChatService:
     def __init__(self) -> None:
@@ -62,6 +65,11 @@ class AssistantChatService:
         )
         self.planning_workflow_service = (
             PlanningWorkflowService()
+        )
+
+
+        self.replanning_service = (
+            ReplanningService()
         )
 
         self.planning_explanation_service = (
@@ -100,6 +108,13 @@ class AssistantChatService:
                 db=db,
                 request=request,
             )
+
+        if intent == AssistantIntent.replanning:
+            return self._handle_replanning(
+                db=db,
+                request=request,
+            )
+
 
         if intent == AssistantIntent.recommendation:
             return self._handle_recommendation(
@@ -214,6 +229,82 @@ class AssistantChatService:
         return AssistantChatResponse(
             answer=answer
         )
+
+    def _handle_replanning(
+        self,
+        db: Session,
+        request: AssistantChatRequest,
+    ) -> AssistantChatResponse:
+        now = datetime.now()
+
+        replanning_request = ReplanningRequest(
+            plan_date=request.plan_date,
+            planning_start_time=now.time().replace(
+                second=0,
+                microsecond=0,
+            ),
+            day_end_hour=request.day_end_hour,
+            break_minutes=request.break_minutes,
+            busy_blocks=request.busy_blocks,
+        )
+
+        result = self.replanning_service.replan(
+            db=db,
+            request=replanning_request,
+        )
+
+        self.conversation_memory_service.set_last_plan(
+            result
+        )
+
+        if not result.scheduled_tasks:
+            return AssistantChatResponse(
+                answer=(
+                    "No encontré tareas pendientes "
+                    "para reorganizar en este momento."
+                )
+            )
+
+        scheduled_tasks = sorted(
+            result.scheduled_tasks,
+            key=lambda scheduled: scheduled.start_time,
+        )
+
+        parts = [
+            (
+                f"{scheduled.task.title} "
+                f"a las "
+                f"{scheduled.start_time.strftime('%H:%M')}"
+            )
+            for scheduled in scheduled_tasks
+        ]
+
+        answer = (
+            "Reorganicé lo que queda de tu día desde las "
+            f"{replanning_request.planning_start_time.strftime('%H:%M')}: "
+            + "; ".join(parts)
+            + "."
+        )
+
+        unscheduled_count = len(
+            result.unscheduled_tasks
+        )
+
+        if unscheduled_count == 1:
+            answer += (
+                " Quedó 1 tarea sin programar."
+            )
+        elif unscheduled_count > 1:
+            answer += (
+                f" Quedaron {unscheduled_count} "
+                f"tareas sin programar."
+            )
+
+        return AssistantChatResponse(
+            answer=answer
+        )
+
+
 
     def _handle_recommendation(
         self,

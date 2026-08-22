@@ -28,6 +28,21 @@ class ReplanningService:
         break_minutes: int = 15,
         busy_blocks: list[TimeBlock] | None = None,
     ) -> PlanningResponse:
+        tasks = (
+            self.planning_workflow_service
+            .task_service
+            .get_plannable(db)
+        )
+
+        tasks_for_day = [
+            task
+            for task in tasks
+            if (
+                task.preferred_date is None
+                or task.preferred_date == plan_date
+            )
+        ]
+
         request = PlanningFromDBRequest(
             plan_date=plan_date,
             planning_start_time=planning_start_time,
@@ -36,11 +51,26 @@ class ReplanningService:
             busy_blocks=busy_blocks or [],
         )
 
+        planning_request = (
+            self.planning_workflow_service
+            .build_planning_request(
+                tasks=tasks_for_day,
+                request=request,
+            )
+        )
+
+        adaptive_profile = (
+            self.planning_workflow_service
+            .adaptive_profile_service
+            .get(db)
+        )
+
         return (
             self.planning_workflow_service
-            .create_plan_from_db(
-                db=db,
-                request=request,
+            .planner_service
+            .create_plan(
+                request=planning_request,
+                adaptive_profile=adaptive_profile,
             )
         )
 
