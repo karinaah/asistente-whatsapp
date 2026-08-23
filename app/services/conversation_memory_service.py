@@ -37,3 +37,16 @@ class ConversationMemoryService:
         plan: PlanningResponse,
     ) -> None:
         self._context.last_plan = plan
+
+    def set_awaiting_remaining_minutes(
+        self,
+        task_id: int,
+    ) -> None:
+        self._context.awaiting_remaining_minutes = True
+        self._context.pending_active_task_id = task_id
+
+    def clear_awaiting_remaining_minutes(
+        self,
+    ) -> None:
+        self._context.awaiting_remaining_minutes = False
+        self._context.pending_active_task_id = None        

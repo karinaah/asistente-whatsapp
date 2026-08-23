@@ -97,6 +97,17 @@ class AssistantChatService:
         db: Session,
         request: AssistantChatRequest,
     ) -> AssistantChatResponse:
+        context = (
+            self.conversation_memory_service
+            .get_context()
+        )
+
+        if context.awaiting_remaining_minutes:
+            return self._handle_remaining_minutes_follow_up(
+                db=db,
+                request=request,
+            )        
+
         intent = self.intent_detector.detect(
             request.message
         )
@@ -348,14 +359,6 @@ class AssistantChatService:
             )
         )
 
-        if remaining_minutes is None:
-            return AssistantChatResponse(
-                answer=(
-                    "¿Cuánto tiempo crees que te falta "
-                    "para terminar la tarea?"
-                )
-            )
-
         now = datetime.now()
 
         active_scheduled = (
@@ -380,6 +383,21 @@ class AssistantChatService:
                 answer=(
                     "No pude identificar correctamente "
                     "la tarea activa para reorganizar el día."
+                )
+            )
+
+        if remaining_minutes is None:
+            (
+                self.conversation_memory_service
+                .set_awaiting_remaining_minutes(
+                    active_task.id
+                )
+            )
+
+            return AssistantChatResponse(
+                answer=(
+                    "¿Cuánto tiempo crees que te falta "
+                    f"para terminar {active_task.title}?"
                 )
             )
 
@@ -431,6 +449,123 @@ class AssistantChatService:
         return AssistantChatResponse(
             answer=answer
         )
+
+
+    def _handle_remaining_minutes_follow_up(
+        self,
+        db: Session,
+        request: AssistantChatRequest,
+    ) -> AssistantChatResponse:
+        context = (
+            self.conversation_memory_service
+            .get_context()
+        )
+
+        remaining_minutes = (
+            self._extract_remaining_minutes(
+                request.message
+            )
+        )
+
+        if remaining_minutes is None:
+            return AssistantChatResponse(
+                answer=(
+                    "No entendí cuánto tiempo te falta. "
+                    "Por ejemplo, puedes decir 30 minutos "
+                    "o 1 hora."
+                )
+            )
+
+        plan = context.last_plan
+
+        if plan is None:
+            self.conversation_memory_service.clear_awaiting_remaining_minutes()
+
+            return AssistantChatResponse(
+                answer=(
+                    "Perdí el plan reciente, así que no puedo "
+                    "reorganizar la tarea pendiente."
+                )
+            )
+
+        task_id = context.pending_active_task_id
+
+        active_scheduled = next(
+            (
+                scheduled
+                for scheduled in plan.scheduled_tasks
+                if scheduled.task.id == task_id
+            ),
+            None,
+        )
+
+        if active_scheduled is None:
+            self.conversation_memory_service.clear_awaiting_remaining_minutes()
+
+            return AssistantChatResponse(
+                answer=(
+                    "No pude encontrar la tarea que estaba "
+                    "pendiente en tu plan."
+                )
+            )
+
+        active_task = active_scheduled.task
+
+        now = datetime.now()
+
+        replanning_request = ReplanningRequest(
+            plan_date=request.plan_date,
+            planning_start_time=now.time().replace(
+                second=0,
+                microsecond=0,
+            ),
+            active_task_id=task_id,
+            remaining_minutes=remaining_minutes,
+            day_end_hour=request.day_end_hour,
+            break_minutes=request.break_minutes,
+            busy_blocks=request.busy_blocks,
+        )
+
+        result = self.replanning_service.replan(
+            db=db,
+            request=replanning_request,
+        )
+
+        self.conversation_memory_service.set_last_plan(
+            result
+        )
+
+        self.conversation_memory_service.clear_awaiting_remaining_minutes()
+
+        scheduled_tasks = sorted(
+            result.scheduled_tasks,
+            key=lambda scheduled: scheduled.start_time,
+        )
+
+        parts = [
+            (
+                f"{scheduled.task.title} "
+                f"a las "
+                f"{scheduled.start_time.strftime('%H:%M')}"
+            )
+            for scheduled in scheduled_tasks
+        ]
+
+        answer = (
+            f"Perfecto. Consideraré que te quedan "
+            f"{remaining_minutes} minutos en "
+            f"{active_task.title}. "
+            f"Reorganicé lo que queda de tu día: "
+            + "; ".join(parts)
+            + "."
+        )
+
+        return AssistantChatResponse(
+            answer=answer
+        )
+
+
+
 
     def _handle_recommendation(
         self,

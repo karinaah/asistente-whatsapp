@@ -717,3 +717,145 @@ def test_chat_planning_uses_current_time_for_today(
     planning_request = captured_request["request"]
 
     assert planning_request.planning_start_time is not None        
+
+def test_chat_active_task_delay_asks_for_remaining_time(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    active_task = Task(
+        id=12,
+        title="Preparar informe",
+        estimated_minutes=60,
+        status="en_progreso",
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=active_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-23T14:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-23T15:00:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    service.conversation_memory_service.set_last_plan(
+        plan
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_find_active_scheduled_task",
+        lambda plan, now: plan.scheduled_tasks[0],
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Me atrasé",
+        ),
+    )
+
+    context = (
+        service.conversation_memory_service
+        .get_context()
+    )
+
+    assert "cuánto tiempo" in response.answer.lower()
+    assert "preparar informe" in response.answer.lower()
+    assert context.awaiting_remaining_minutes is True
+    assert context.pending_active_task_id == 12    
+
+def test_chat_active_task_delay_follow_up(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    active_task = Task(
+        id=12,
+        title="Preparar informe",
+        estimated_minutes=60,
+        status="en_progreso",
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=active_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-23T14:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-23T15:00:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    service.conversation_memory_service.set_last_plan(
+        plan
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_find_active_scheduled_task",
+        lambda plan, now: plan.scheduled_tasks[0],
+    )
+
+    first_response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Me atrasé",
+        ),
+    )
+
+    assert "cuánto tiempo" in first_response.answer.lower()
+
+    fake_replanned = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=active_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-23T14:30:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-23T15:10:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        lambda db, request: fake_replanned,
+    )
+
+    second_response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="40 minutos",
+        ),
+    )
+
+    context = (
+        service.conversation_memory_service
+        .get_context()
+    )
+
+    assert "40 minutos" in second_response.answer.lower()
+    assert "preparar informe" in second_response.answer.lower()
+    assert "reorganicé" in second_response.answer.lower()
+    assert context.awaiting_remaining_minutes is False
+    assert context.pending_active_task_id is None    
