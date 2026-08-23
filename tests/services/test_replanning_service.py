@@ -432,3 +432,69 @@ def test_replan_excludes_tasks_for_future_dates(
 
     assert "Tarea de hoy" in scheduled_titles
     assert "Tarea de mañana" not in scheduled_titles    
+
+def test_active_task_replan_excludes_future_tasks(
+    monkeypatch,
+):
+    service = ReplanningService()
+
+    active_task = Task(
+        id=30,
+        title="Tarea activa",
+        estimated_minutes=60,
+        status="en_progreso",
+        preferred_date=date.fromisoformat(
+            "2026-08-23"
+        ),
+    )
+
+    tomorrow_task = Task(
+        id=31,
+        title="Tarea de mañana",
+        estimated_minutes=60,
+        status="pendiente",
+        preferred_date=date.fromisoformat(
+            "2026-08-24"
+        ),
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_all",
+        lambda db: [
+            active_task,
+            tomorrow_task,
+        ],
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db: None,
+    )
+
+    request = ReplanningRequest(
+        plan_date=date.fromisoformat(
+            "2026-08-23"
+        ),
+        planning_start_time=time.fromisoformat(
+            "14:19"
+        ),
+        active_task_id=30,
+        remaining_minutes=30,
+        day_end_hour=20,
+        break_minutes=0,
+    )
+
+    result = service.replan(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in result.scheduled_tasks
+    }
+
+    assert "Tarea activa" in scheduled_titles
+    assert "Tarea de mañana" not in scheduled_titles    

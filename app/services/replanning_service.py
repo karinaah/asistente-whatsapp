@@ -99,6 +99,16 @@ class ReplanningService:
             .get_plannable(db)
         )
 
+
+        tasks = [
+            task
+            for task in tasks
+            if (
+                task.preferred_date is None
+                or task.preferred_date == request.plan_date
+            )
+        ]
+
         adjusted_tasks: list[Task] = []
 
         for task in tasks:

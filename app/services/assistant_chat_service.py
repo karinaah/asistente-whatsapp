@@ -161,9 +161,19 @@ class AssistantChatService:
         db: Session,
         request: AssistantChatRequest,
     ) -> AssistantChatResponse:
+        now = datetime.now()
+
+        planning_start_time = None
+
+        if request.plan_date == now.date():
+            planning_start_time = now.time().replace(
+                second=0,
+                microsecond=0,
+            )        
         planning_request = PlanningFromDBRequest(
             plan_date=request.plan_date,
             day_start_hour=request.day_start_hour,
+            planning_start_time=planning_start_time,
             day_end_hour=request.day_end_hour,
             break_minutes=request.break_minutes,
             busy_blocks=request.busy_blocks,

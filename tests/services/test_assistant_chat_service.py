@@ -677,4 +677,43 @@ def test_chat_active_task_delay(monkeypatch):
 
     assert "30 minutos" in response.answer.lower()
     assert "preparar informe" in response.answer.lower()
-    assert "reorganicé" in response.answer.lower()    
+    assert "reorganicé" in response.answer.lower()
+
+def test_chat_planning_uses_current_time_for_today(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    captured_request = {}
+
+    class FakeResult:
+        response = PlanningResponse(
+            scheduled_tasks=[],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+        decisions = []
+
+    def fake_create_plan(
+        db,
+        request,
+    ):
+        captured_request["request"] = request
+        return FakeResult()
+
+    monkeypatch.setattr(
+        service.planning_workflow_service,
+        "create_plan_with_decisions_from_db",
+        fake_create_plan,
+    )
+
+    service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Organiza mi día",
+        ),
+    )
+
+    planning_request = captured_request["request"]
+
+    assert planning_request.planning_start_time is not None        
