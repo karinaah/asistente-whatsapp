@@ -2,6 +2,7 @@ from app.models.task import (
     ActivityType,
     PreferredTimeOfDay,
     TaskCategory,
+    TaskPriority,
     TaskWorkspace,
 )
 
@@ -56,6 +57,19 @@ CATEGORY_KEYWORDS: dict[TaskCategory, tuple[str, ...]] = {
         "buscar",
     ),
 }
+
+PRIORITY_KEYWORDS: dict[
+    TaskPriority,
+    tuple[str, ...],
+] = {
+    TaskPriority.high: (
+        "urgente",
+        "urgencia",
+        "prioridad alta",
+        "muy importante",
+    ),
+}
+
 
 ACTIVITY_TYPE_KEYWORDS: dict[
     ActivityType,

@@ -3,6 +3,7 @@ from datetime import date
 from app.config.task_analysis_rules import (
     ACTIVITY_TYPE_KEYWORDS,
     CATEGORY_KEYWORDS,
+    PRIORITY_KEYWORDS,
     WORKSPACE_KEYWORDS,
 )
 from app.models.task import (
@@ -10,6 +11,7 @@ from app.models.task import (
     Task,
     TaskCategory,
     TaskContext,
+    TaskPriority,
     TaskWorkspace,
 )
 from app.services.temporal_parser import TemporalParser
@@ -55,6 +57,19 @@ class TaskAnalyzerService:
             and inferred_category is not None
         ):
             updates["category"] = inferred_category
+
+
+        inferred_priority = self._infer_priority(
+            searchable_text
+        )
+
+        if (
+            task.priority == TaskPriority.medium
+            and inferred_priority is not None
+        ):
+            updates["priority"] = inferred_priority
+
+
 
         inferred_activity_type = self._infer_activity_type(
             searchable_text
@@ -139,6 +154,20 @@ class TaskAnalyzerService:
                 return category
 
         return None
+
+    def _infer_priority(
+        self,
+        searchable_text: str,
+    ) -> TaskPriority | None:
+        for priority, keywords in PRIORITY_KEYWORDS.items():
+            if any(
+                keyword in searchable_text
+                for keyword in keywords
+            ):
+                return priority
+
+        return None
+
 
     def _infer_activity_type(
         self,

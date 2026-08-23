@@ -50,10 +50,22 @@ class MockAIService:
                 )
             )
 
+        clean_title = text.strip()
+
+        urgent_meeting_match = re.search(
+            r"(?:me apareció|apareció|tengo|surgió|surgio)\s+"
+            r"(?:una\s+)?reunión\s+urgente",
+            normalized_text,
+        )
+
+        if urgent_meeting_match:
+            clean_title = "Reunión urgente"
+
+
         if not tasks:
             tasks.append(
                 Task(
-                    title=text.strip(),
+                    title=clean_title,
                     estimated_minutes=estimated_minutes or 30,
                 )
             )

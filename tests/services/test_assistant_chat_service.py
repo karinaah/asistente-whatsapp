@@ -858,4 +858,57 @@ def test_chat_active_task_delay_follow_up(
     assert "preparar informe" in second_response.answer.lower()
     assert "reorganicé" in second_response.answer.lower()
     assert context.awaiting_remaining_minutes is False
-    assert context.pending_active_task_id is None    
+    assert context.pending_active_task_id is None
+
+def test_chat_creates_urgent_task_and_replans(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    urgent_task = Task(
+        id=50,
+        title="Reunión urgente",
+        estimated_minutes=45,
+        priority="alta",
+    )
+
+    monkeypatch.setattr(
+        service.task_creation_workflow_service,
+        "create_from_text",
+        lambda db, text, reference_date: [
+            urgent_task
+        ],
+    )
+
+    fake_plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=urgent_task,
+                start_time=datetime.fromisoformat(
+                    "2026-08-23T15:00:00"
+                ),
+                end_time=datetime.fromisoformat(
+                    "2026-08-23T15:45:00"
+                ),
+            )
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        lambda db, request: fake_plan,
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Reunión urgente de 45 minutos",
+        ),
+    )
+
+    assert "creé la tarea urgente" in response.answer.lower()
+    assert "reorganicé" in response.answer.lower()
+    assert "reunión urgente" in response.answer.lower()        

@@ -876,6 +876,62 @@ class AssistantChatService:
         if len(tasks) == 1:
             task = tasks[0]
 
+            should_replan = (
+                task.priority.value == "alta"
+                and (
+                    task.preferred_date is None
+                    or task.preferred_date == request.plan_date
+                )
+            )
+
+            if should_replan:
+                now = datetime.now()
+
+                replanning_request = ReplanningRequest(
+                    plan_date=request.plan_date,
+                    planning_start_time=now.time().replace(
+                        second=0,
+                        microsecond=0,
+                    ),
+                    day_end_hour=request.day_end_hour,
+                    break_minutes=request.break_minutes,
+                    busy_blocks=request.busy_blocks,
+                )
+
+                result = self.replanning_service.replan(
+                    db=db,
+                    request=replanning_request,
+                )
+
+                self.conversation_memory_service.set_last_plan(
+                    result
+                )
+
+                scheduled_tasks = sorted(
+                    result.scheduled_tasks,
+                    key=lambda scheduled: scheduled.start_time,
+                )
+
+                parts = [
+                    (
+                        f"{scheduled.task.title} "
+                        f"a las "
+                        f"{scheduled.start_time.strftime('%H:%M')}"
+                    )
+                    for scheduled in scheduled_tasks
+                ]
+
+                answer = (
+                    f"Creé la tarea urgente '{task.title}' "
+                    f"y reorganicé lo que queda de tu día: "
+                    + "; ".join(parts)
+                    + "."
+                )
+
+                return AssistantChatResponse(
+                    answer=answer
+                )
+
             return AssistantChatResponse(
                 answer=(
                     f"Creé la tarea '{task.title}'. "
@@ -883,6 +939,9 @@ class AssistantChatService:
                     f"Tipo de actividad: {task.activity_type.value}."
                 )
             )
+
+
+
 
         titles = ", ".join(
             task.title

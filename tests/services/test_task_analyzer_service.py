@@ -117,3 +117,23 @@ def test_personal_workspace_sets_personal_context():
 
     assert analyzed[0].workspace == TaskWorkspace.personal
     assert analyzed[0].context == TaskContext.personal    
+
+def test_analyze_infers_high_priority_from_urgent_text():
+    service = TaskAnalyzerService(
+        temporal_parser=TemporalParser()
+    )
+
+    task = Task(
+        title="Reunión urgente de 45 minutos",
+        estimated_minutes=45,
+    )
+
+    analyzed = service.analyze(
+        tasks=[task],
+        reference_date=date.fromisoformat(
+            "2026-08-23"
+        ),
+    )
+
+    assert len(analyzed) == 1
+    assert analyzed[0].priority.value == "alta"    
