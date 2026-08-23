@@ -29,6 +29,15 @@ class PlanningWorkflowService:
     ) -> PlanningResponse:
         tasks = self.task_service.get_plannable(db)
 
+        tasks = [
+            task
+            for task in tasks
+            if (
+                task.preferred_date is None
+                or task.preferred_date == request.plan_date
+            )
+        ]
+
         planning_request = self.build_planning_request(
             tasks=tasks,
             request=request,
@@ -67,6 +76,15 @@ class PlanningWorkflowService:
     ) -> list[PlanningDecision]:
         tasks = self.task_service.get_plannable(db)
 
+        tasks = [
+            task
+            for task in tasks
+            if (
+                task.preferred_date is None
+                or task.preferred_date == request.plan_date
+            )
+        ]
+
         planning_request = self.build_planning_request(
             tasks=tasks,
             request=request,
@@ -87,6 +105,15 @@ class PlanningWorkflowService:
         request: PlanningFromDBRequest,
     ):
         tasks = self.task_service.get_plannable(db)
+
+        tasks = [
+            task
+            for task in tasks
+            if (
+                task.preferred_date is None
+                or task.preferred_date == request.plan_date
+            )
+        ]
 
         planning_request = self.build_planning_request(
             tasks=tasks,
