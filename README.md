@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
-![Tests](https://img.shields.io/badge/tests-88%20passing-success)
-![Version](https://img.shields.io/badge/version-v1.2.0-orange)
+![Tests](https://img.shields.io/badge/tests-129%20passing-success)
+![Version](https://img.shields.io/badge/version-v1.3.0-orange)
 
 # AURA
 
@@ -37,6 +37,11 @@ AURA v1.0.0 funciona sin depender de servicios externos de inteligencia artifici
 - Seguimiento contextual de conversaciones.
 - Reutilización del último plan y recomendación durante la conversación.
 - Soporte para consultas contextuales como `¿Y después?`.
+- Tareas flexibles, semi-flexibles y fijas.
+- Replanificación dinámica durante el día.
+- Manejo de atrasos y tiempo restante de tareas activas.
+- Creación de tareas urgentes con replanificación automática.
+- Exclusión automática de tareas futuras al planificar el día actual.
 
 ---
 
@@ -55,6 +60,10 @@ Sus principales componentes son:
 - Adaptive Profile
 - Workflow Services
 - Repository Layer
+- replanificación;
+- atrasos en tareas activas;
+- creación de tareas;
+- tareas urgentes.
 
 Cada componente tiene responsabilidades definidas y se comunica mediante modelos explícitos.
 
@@ -211,8 +220,7 @@ AURA: utiliza el contexto del plan y la recomendación
 
 # Memoria conversacional
 
-AURA v1.0.0 incorpora memoria conversacional temporal mediante `ConversationMemoryService`.
-
+AURA incorpora memoria conversacional temporal mediante `ConversationMemoryService`.
 Actualmente puede conservar:
 
 - última intención detectada;
@@ -276,7 +284,7 @@ Clonar el repositorio:
 
 ```bash
 git clone https://github.com/karinaah/asistente-whatsapp.git
-cd AURA
+cd asistente-whatsapp
 ```
 
 Crear un entorno virtual:
@@ -329,9 +337,9 @@ Ejecutar toda la suite:
 pytest -v
 ```
 
-Estado de v1.0.0:
+Estado de v1.3.0:
 
-- 83 tests automatizados.
+- 129 tests automatizados.
 - Tests unitarios.
 - Tests de integración.
 - Tests de persistencia.
@@ -340,7 +348,10 @@ Estado de v1.0.0:
 - Tests de Workflow Services.
 - Tests de memoria conversacional.
 - Tests de flujos conversacionales.
-- Cobertura de Planner, Decision, Learning, Explanation, Adaptive Profile y Assistant.
+- Tests de planificación y replanificación.
+- Tests de tareas flexibles, semi-flexibles y fijas.
+- Tests de tareas activas, atrasos y tiempo restante.
+- Tests de creación y priorización de tareas urgentes.
 
 ---
 
@@ -373,7 +384,7 @@ Toda la documentación interactiva de los endpoints está disponible mediante Sw
 
 # Estado del proyecto
 
-Versión actual: **v1.2.0**
+Versión actual: **v1.3.0**
 
 Estado:
 
@@ -387,28 +398,33 @@ Estado:
 - ✅ Creación de tareas desde lenguaje natural en el Chat
 - ✅ Recomendaciones sensibles al tipo de actividad
 - ✅ Disponibilidad global para tareas personales y de trabajo
+- ✅ Tareas flexibles, semi-flexibles y fijas
+- ✅ Replanificación dinámica del día
+- ✅ Manejo conversacional de atrasos
+- ✅ Tiempo restante para tareas en progreso
+- ✅ Creación de tareas urgentes
+- ✅ Replanificación automática ante nuevas urgencias
+- ✅ Exclusión de tareas futuras del plan diario
 
 ---
 
 # Roadmap
 
-AURA v1.2.0 amplía la interfaz web y el núcleo de decisión de v1.1.0, incorporando una separación explícita entre vida personal y trabajo sin fragmentar la planificación diaria.
+AURA v1.3.0 amplía la planificación diaria incorporando replanificación dinámica y capacidad de adaptación durante el transcurso del día.
 
 La versión incorpora:
 
-- workspaces `trabajo` y `personal`;
-- clasificación de tareas por tipo de actividad;
-- inferencia automática de `workspace` y `activity_type`;
-- sincronización entre `workspace` y contexto operativo;
-- filtros de tareas por workspace;
-- una única disponibilidad global para tareas personales y laborales;
-- reglas de recomendación sensibles al tipo de actividad;
-- creación de tareas desde lenguaje natural mediante Assistant Chat;
-- migración compatible con bases SQLite existentes.
+- tareas flexibles, semi-flexibles y fijas;
+- replanificación desde la hora actual;
+- manejo de tareas en progreso;
+- actualización del tiempo restante ante atrasos;
+- follow-ups conversacionales para completar información faltante;
+- creación de tareas urgentes;
+- replanificación automática ante nuevas prioridades;
+- exclusión de tareas futuras del plan del día actual.
 
 Las siguientes etapas del proyecto contemplan, entre otras capacidades:
 
-- tareas flexibles y replanificación;
 - seguimientos y rutinas;
 - memoria persistente por usuario y sesión;
 - mejoras del aprendizaje adaptativo;
@@ -425,8 +441,7 @@ El roadmap detallado y actualizado del proyecto se encuentra en `app/docs/produc
 
 # Limitaciones actuales
 
-AURA v1.2.0 permite organizar y planificar conjuntamente tareas personales y de trabajo, pero todavía existen capacidades previstas para versiones posteriores.
-
+AURA v1.3.0 permite organizar y replanificar dinámicamente tareas personales y de trabajo durante el día, aunque todavía existen capacidades previstas para versiones posteriores.
 Entre ellas:
 
 - la memoria conversacional no es persistente;
@@ -434,7 +449,6 @@ Entre ellas:
 - el reconocimiento de intención continúa basado en reglas;
 - la creación de tareas desde lenguaje natural depende actualmente de reglas y del servicio de extracción configurado;
 - las conversaciones contextuales soportadas todavía son limitadas;
-- todavía no existe replanificación avanzada de tareas flexibles;
 - las integraciones externas como Google Calendar y WhatsApp todavía no están implementadas;
 - no se utiliza un modelo de lenguaje externo para generar o interpretar conversaciones.
 

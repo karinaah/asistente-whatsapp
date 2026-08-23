@@ -5,6 +5,52 @@ Todas las modificaciones importantes del proyecto serán documentadas en este ar
 El formato está inspirado en **Keep a Changelog** y las versiones siguen **Semantic Versioning**.
 
 ---
+## v1.3.0
+
+### Added
+
+- Soporte de flexibilidad de tareas mediante los modos `flexible`, `semi_flexible` y `fixed`.
+- Replanificación dinámica desde una hora específica del día.
+- Nuevo `ReplanningService` para reorganizar tareas pendientes durante el día.
+- Soporte de tareas activas con tiempo restante sin modificar su estimación original.
+- Nueva intención conversacional `replanning`.
+- Nueva intención `active_task_delay` para manejar atrasos en tareas activas.
+- Soporte conversacional para frases como:
+  - `Reorganiza lo que me queda del día`.
+  - `Me faltan 30 minutos`.
+  - `Me atrasé`.
+- Follow-up contextual para solicitar el tiempo restante cuando el usuario informa un atraso sin indicar duración.
+- Creación de tareas urgentes desde Chat con replanificación automática.
+- Inferencia de prioridad alta a partir de expresiones como `urgente`, `urgencia` y `prioridad alta`.
+- Limpieza del título de reuniones urgentes creadas desde mensajes conversacionales.
+
+### Changed
+
+- La planificación del día actual comienza desde la hora actual en lugar de volver al inicio configurado del día.
+- Las tareas futuras ya no se incluyen al planificar o replanificar el día actual.
+- Las tareas `fixed` deben respetar exactamente su horario preferido.
+- Las tareas `semi_flexible` deben mantenerse dentro de su franja horaria preferida.
+- Las tareas `in_progress` tienen prioridad sobre tareas pendientes durante una replanificación.
+- Una nueva tarea urgente puede reorganizar lo pendiente sin desplazar automáticamente una tarea ya en progreso.
+- La memoria conversacional conserva temporalmente el contexto necesario para completar follow-ups de replanificación.
+
+### Testing
+
+- Se agregaron pruebas para:
+  - flexibilidad y restricciones de planificación;
+  - replanificación desde hora actual;
+  - exclusión de tareas completadas y futuras;
+  - tareas activas y tiempo restante;
+  - detección de nuevas intenciones conversacionales;
+  - follow-ups contextuales;
+  - creación y replanificación de tareas urgentes.
+- Suite automatizada completa: **129 tests passing**.
+
+### Release
+
+AURA v1.3.0 incorpora replanificación dinámica y adaptación del plan durante el transcurso del día. El asistente puede reaccionar a atrasos, cambios de prioridad y nuevas tareas urgentes, manteniendo las restricciones temporales y el contexto conversacional inmediato.
+
+
 ## v1.2.0
 
 ### Added
