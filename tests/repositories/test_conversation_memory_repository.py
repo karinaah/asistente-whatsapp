@@ -7,7 +7,7 @@ from app.models.conversation_context_db import ConversationContextDB
 from app.repositories.conversation_memory_repository import (
     ConversationMemoryRepository,
 )
-
+from app.models.assistant_intent import AssistantIntent
 
 def create_test_db():
     engine = create_engine(
@@ -82,3 +82,52 @@ def test_clear_removes_persisted_context():
 
     finally:
         db.close()
+
+def test_sessions_keep_independent_contexts():
+    db = create_test_db()
+
+    try:
+        repository = ConversationMemoryRepository()
+
+        work_context = ConversationContext(
+            last_intent=AssistantIntent.planning,
+        )
+
+        personal_context = ConversationContext(
+            last_intent=AssistantIntent.recommendation,
+        )
+
+        repository.save(
+            db,
+            work_context,
+            session_id="work",
+        )
+
+        repository.save(
+            db,
+            personal_context,
+            session_id="personal",
+        )
+
+        stored_work = repository.get(
+            db,
+            session_id="work",
+        )
+
+        stored_personal = repository.get(
+            db,
+            session_id="personal",
+        )
+
+        assert (
+            stored_work.last_intent
+            == AssistantIntent.planning
+        )
+
+        assert (
+            stored_personal.last_intent
+            == AssistantIntent.recommendation
+        )
+
+    finally:
+        db.close()        

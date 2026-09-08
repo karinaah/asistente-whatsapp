@@ -99,8 +99,12 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context(db=db)
+            .get_context(
+                db=db,
+                session_id=request.session_id,
+            )
         )
+
 
         if context.awaiting_remaining_minutes:
             return self._handle_remaining_minutes_follow_up(
@@ -114,6 +118,7 @@ class AssistantChatService:
         self.conversation_memory_service.set_last_intent(
             intent,
             db=db,
+            session_id=request.session_id,
         )
 
 
@@ -206,7 +211,10 @@ class AssistantChatService:
         self.conversation_memory_service.set_last_plan(
             result.response,
             db=db,
+            session_id=request.session_id,
         )
+
+
 
         decisions = result.decisions
 
@@ -286,6 +294,7 @@ class AssistantChatService:
         self.conversation_memory_service.set_last_plan(
             result,
             db=db,
+            session_id=request.session_id,
         )
 
         if not result.scheduled_tasks:
@@ -344,8 +353,12 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context(db=db)
+            .get_context(
+                db=db,
+                session_id=request.session_id,
+            )
         )
+
 
         plan = context.last_plan
 
@@ -396,8 +409,10 @@ class AssistantChatService:
                 .set_awaiting_remaining_minutes(
                     active_task.id,
                     db=db,
+                    session_id=request.session_id,
                 )
             )
+
 
             return AssistantChatResponse(
                 answer=(
@@ -427,6 +442,7 @@ class AssistantChatService:
         self.conversation_memory_service.set_last_plan(
             result,
             db=db,
+            session_id=request.session_id,
         )
 
         scheduled_tasks = sorted(
@@ -464,8 +480,13 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context(db=db)
+            .get_context(
+                db=db,
+                session_id=request.session_id,
+            )
         )
+
+
 
         remaining_minutes = (
             self._extract_remaining_minutes(
@@ -485,7 +506,11 @@ class AssistantChatService:
         plan = context.last_plan
 
         if plan is None:
-            self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
+            self.conversation_memory_service.clear_awaiting_remaining_minutes(
+                db=db,
+                session_id=request.session_id,
+            )
+
 
             return AssistantChatResponse(
                 answer=(
@@ -506,7 +531,12 @@ class AssistantChatService:
         )
 
         if active_scheduled is None:
-            self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
+            self.conversation_memory_service.clear_awaiting_remaining_minutes(
+                db=db,
+                session_id=request.session_id,
+            )
+
+
 
             return AssistantChatResponse(
                 answer=(
@@ -537,12 +567,18 @@ class AssistantChatService:
             request=replanning_request,
         )
 
+
         self.conversation_memory_service.set_last_plan(
             result,
             db=db,
+            session_id=request.session_id,
         )
 
-        self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
+        self.conversation_memory_service.clear_awaiting_remaining_minutes(
+            db=db,
+            session_id=request.session_id,
+        )
+
 
         scheduled_tasks = sorted(
             result.scheduled_tasks,
@@ -609,7 +645,9 @@ class AssistantChatService:
         self.conversation_memory_service.set_last_recommendation(
             recommendation,
             db=db,
+            session_id=request.session_id,
         )
+
 
         answer = (
             recommendation.summary
@@ -665,8 +703,13 @@ class AssistantChatService:
         # Primero intenta usar la memoria conversacional
         context = (
             self.conversation_memory_service
-            .get_context(db=db)
+            .get_context(
+                db=db,
+                session_id=request.session_id,
+            )
         )
+
+
 
         if context.last_recommendation is not None:
             recommendation = (
@@ -784,8 +827,12 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context(db=db)
+            .get_context(
+                db=db,
+                session_id=request.session_id,
+            )
         )
+
 
         plan = context.last_plan
 
@@ -914,7 +961,11 @@ class AssistantChatService:
                 self.conversation_memory_service.set_last_plan(
                     result,
                     db=db,
+                    session_id=request.session_id,
                 )
+
+
+
 
                 scheduled_tasks = sorted(
                     result.scheduled_tasks,

@@ -12,7 +12,15 @@ class ConversationContextDB(Base):
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
-        default=1,
+        autoincrement=True,
+    )
+
+
+    session_id: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=False,
+        default="default",
     )
 
     last_intent: Mapped[str | None] = mapped_column(

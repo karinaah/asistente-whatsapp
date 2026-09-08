@@ -27,18 +27,26 @@ class ConversationMemoryService:
     def get_context(
         self,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> ConversationContext:
         if db is not None:
-            return self.repository.get(db)
+            return self.repository.get(
+                db,
+                session_id=session_id,
+            )
 
         return self._context
 
     def clear(
         self,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            self.repository.clear(db)
+            self.repository.clear(
+                db,
+                session_id=session_id,
+            )
             return
 
         self._context = ConversationContext()
@@ -47,11 +55,20 @@ class ConversationMemoryService:
         self,
         intent: AssistantIntent,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            context = self.repository.get(db)
+            context = self.repository.get(
+                db,
+                session_id=session_id,
+            )
             context.last_intent = intent
-            self.repository.save(db, context)
+
+            self.repository.save(
+                db,
+                context,
+                session_id=session_id,
+            )
             return
 
         self._context.last_intent = intent
@@ -60,13 +77,23 @@ class ConversationMemoryService:
         self,
         recommendation: Recommendation,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            context = self.repository.get(db)
+            context = self.repository.get(
+                db,
+                session_id=session_id,
+            )
+
             context.last_recommendation = (
                 recommendation
             )
-            self.repository.save(db, context)
+
+            self.repository.save(
+                db,
+                context,
+                session_id=session_id,
+            )
             return
 
         self._context.last_recommendation = (
@@ -77,11 +104,21 @@ class ConversationMemoryService:
         self,
         plan: PlanningResponse,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            context = self.repository.get(db)
+            context = self.repository.get(
+                db,
+                session_id=session_id,
+            )
+
             context.last_plan = plan
-            self.repository.save(db, context)
+
+            self.repository.save(
+                db,
+                context,
+                session_id=session_id,
+            )
             return
 
         self._context.last_plan = plan
@@ -90,12 +127,22 @@ class ConversationMemoryService:
         self,
         task_id: int,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            context = self.repository.get(db)
+            context = self.repository.get(
+                db,
+                session_id=session_id,
+            )
+
             context.awaiting_remaining_minutes = True
             context.pending_active_task_id = task_id
-            self.repository.save(db, context)
+
+            self.repository.save(
+                db,
+                context,
+                session_id=session_id,
+            )
             return
 
         self._context.awaiting_remaining_minutes = True
@@ -104,12 +151,22 @@ class ConversationMemoryService:
     def clear_awaiting_remaining_minutes(
         self,
         db: Session | None = None,
+        session_id: str = "default",
     ) -> None:
         if db is not None:
-            context = self.repository.get(db)
+            context = self.repository.get(
+                db,
+                session_id=session_id,
+            )
+
             context.awaiting_remaining_minutes = False
             context.pending_active_task_id = None
-            self.repository.save(db, context)
+
+            self.repository.save(
+                db,
+                context,
+                session_id=session_id,
+            )
             return
 
         self._context.awaiting_remaining_minutes = False

@@ -9,6 +9,12 @@ from app.models.time_block import TimeBlock
 
 class AssistantChatRequest(BaseModel):
     message: str
+    session_id: str = Field(
+        default="default",
+        min_length=1,
+        max_length=100,
+    )
+
 
     plan_date: date = Field(
         default_factory=date.today,

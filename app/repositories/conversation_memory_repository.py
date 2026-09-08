@@ -11,12 +11,17 @@ class ConversationMemoryRepository:
     def get(
         self,
         db: Session,
+        session_id: str = "default",
     ) -> ConversationContext:
         context_db = (
             db.query(ConversationContextDB)
-            .filter(ConversationContextDB.id == 1)
+            .filter(
+                ConversationContextDB.session_id
+                == session_id
+            )
             .first()
         )
+
 
         if context_db is None:
             return ConversationContext()
@@ -53,12 +58,24 @@ class ConversationMemoryRepository:
         self,
         db: Session,
         context: ConversationContext,
+        session_id: str = "default",
     ) -> ConversationContextDB:
         context_db = (
             db.query(ConversationContextDB)
-            .filter(ConversationContextDB.id == 1)
+            .filter(
+                ConversationContextDB.session_id
+                == session_id
+            )
             .first()
         )
+
+        if context_db is None:
+            context_db = ConversationContextDB(
+                session_id=session_id,
+            )
+            db.add(context_db)
+
+
 
         if context_db is None:
             context_db = ConversationContextDB(id=1)
@@ -102,12 +119,16 @@ class ConversationMemoryRepository:
     def clear(
         self,
         db: Session,
+        session_id: str = "default",
     ) -> None:
         context_db = (
             db.query(ConversationContextDB)
-            .filter(ConversationContextDB.id == 1)
+            .filter(
+                ConversationContextDB.session_id
+                == session_id
+            )
             .first()
-        )
+        )        
 
         if context_db is None:
             return

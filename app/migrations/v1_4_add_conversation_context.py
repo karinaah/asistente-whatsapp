@@ -21,6 +21,21 @@ def table_exists(
     return result is not None
 
 
+def column_exists(
+    conn: sqlite3.Connection,
+    table_name: str,
+    column_name: str,
+) -> bool:
+    columns = conn.execute(
+        f"PRAGMA table_info({table_name})"
+    ).fetchall()
+
+    return any(
+        column[1] == column_name
+        for column in columns
+    )
+
+
 def run_migration() -> None:
     conn = sqlite3.connect(DATABASE_PATH)
 
@@ -32,7 +47,9 @@ def run_migration() -> None:
             conn.execute(
                 """
                 CREATE TABLE conversation_context (
-                    id INTEGER PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id VARCHAR(100)
+                        NOT NULL UNIQUE,
                     last_intent VARCHAR(50),
                     last_recommendation JSON,
                     last_plan JSON,
@@ -42,6 +59,35 @@ def run_migration() -> None:
                     updated_at DATETIME NOT NULL
                         DEFAULT CURRENT_TIMESTAMP
                 )
+                """
+            )
+
+        elif not column_exists(
+            conn,
+            "conversation_context",
+            "session_id",
+        ):
+            conn.execute(
+                """
+                ALTER TABLE conversation_context
+                ADD COLUMN session_id VARCHAR(100)
+                """
+            )
+
+            conn.execute(
+                """
+                UPDATE conversation_context
+                SET session_id = 'default'
+                WHERE session_id IS NULL
+                """
+            )
+
+            conn.execute(
+                """
+                CREATE UNIQUE INDEX
+                IF NOT EXISTS
+                ix_conversation_context_session_id
+                ON conversation_context(session_id)
                 """
             )
 
