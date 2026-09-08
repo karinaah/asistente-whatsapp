@@ -99,7 +99,7 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context()
+            .get_context(db=db)
         )
 
         if context.awaiting_remaining_minutes:
@@ -112,8 +112,10 @@ class AssistantChatService:
             request.message
         )
         self.conversation_memory_service.set_last_intent(
-            intent
+            intent,
+            db=db,
         )
+
 
         if intent == AssistantIntent.planning:
             return self._handle_planning(
@@ -202,7 +204,8 @@ class AssistantChatService:
         )
 
         self.conversation_memory_service.set_last_plan(
-            result.response
+            result.response,
+            db=db,
         )
 
         decisions = result.decisions
@@ -281,7 +284,8 @@ class AssistantChatService:
         )
 
         self.conversation_memory_service.set_last_plan(
-            result
+            result,
+            db=db,
         )
 
         if not result.scheduled_tasks:
@@ -340,7 +344,7 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context()
+            .get_context(db=db)
         )
 
         plan = context.last_plan
@@ -390,7 +394,8 @@ class AssistantChatService:
             (
                 self.conversation_memory_service
                 .set_awaiting_remaining_minutes(
-                    active_task.id
+                    active_task.id,
+                    db=db,
                 )
             )
 
@@ -420,7 +425,8 @@ class AssistantChatService:
         )
 
         self.conversation_memory_service.set_last_plan(
-            result
+            result,
+            db=db,
         )
 
         scheduled_tasks = sorted(
@@ -458,7 +464,7 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context()
+            .get_context(db=db)
         )
 
         remaining_minutes = (
@@ -479,7 +485,7 @@ class AssistantChatService:
         plan = context.last_plan
 
         if plan is None:
-            self.conversation_memory_service.clear_awaiting_remaining_minutes()
+            self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
 
             return AssistantChatResponse(
                 answer=(
@@ -500,7 +506,7 @@ class AssistantChatService:
         )
 
         if active_scheduled is None:
-            self.conversation_memory_service.clear_awaiting_remaining_minutes()
+            self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
 
             return AssistantChatResponse(
                 answer=(
@@ -532,10 +538,11 @@ class AssistantChatService:
         )
 
         self.conversation_memory_service.set_last_plan(
-            result
+            result,
+            db=db,
         )
 
-        self.conversation_memory_service.clear_awaiting_remaining_minutes()
+        self.conversation_memory_service.clear_awaiting_remaining_minutes(db=db)
 
         scheduled_tasks = sorted(
             result.scheduled_tasks,
@@ -600,7 +607,8 @@ class AssistantChatService:
             )
 
         self.conversation_memory_service.set_last_recommendation(
-            recommendation
+            recommendation,
+            db=db,
         )
 
         answer = (
@@ -657,7 +665,7 @@ class AssistantChatService:
         # Primero intenta usar la memoria conversacional
         context = (
             self.conversation_memory_service
-            .get_context()
+            .get_context(db=db)
         )
 
         if context.last_recommendation is not None:
@@ -776,7 +784,7 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         context = (
             self.conversation_memory_service
-            .get_context()
+            .get_context(db=db)
         )
 
         plan = context.last_plan
@@ -904,7 +912,8 @@ class AssistantChatService:
                 )
 
                 self.conversation_memory_service.set_last_plan(
-                    result
+                    result,
+                    db=db,
                 )
 
                 scheduled_tasks = sorted(
