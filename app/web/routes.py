@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import uuid4
 
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -179,11 +180,28 @@ def edit_task_from_web(
 
 @router.get("/web/chat")
 def chat_page(request: Request):
-    return templates.TemplateResponse(
+    session_id = request.cookies.get(
+        "aura_session_id",
+    )
+
+    if session_id is None:
+        session_id = str(uuid4())
+
+    response = templates.TemplateResponse(
         request=request,
         name="chat.html",
         context={},
-    )    
+    )
+
+    response.set_cookie(
+        key="aura_session_id",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
+
 
 @router.post("/web/chat")
 def chat_message(
@@ -191,9 +209,17 @@ def chat_message(
     message: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    session_id = request.cookies.get(
+        "aura_session_id",
+        "default",
+    )
+
     chat_request = AssistantChatRequest(
         message=message,
+        session_id=session_id,
     )
+
+
 
     response = assistant_chat_service.chat(
         db=db,
