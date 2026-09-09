@@ -189,3 +189,43 @@ def test_save_associates_context_with_user():
 
     finally:
         db.close()        
+
+def test_save_without_user_id_preserves_existing_user():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        repository = ConversationMemoryRepository()
+
+        context = ConversationContext(
+            last_intent=AssistantIntent.planning,
+        )
+
+        repository.save(
+            db,
+            context,
+            session_id="preserve-user-session",
+            user_id=user.id,
+        )
+
+        updated_context = ConversationContext(
+            last_intent=AssistantIntent.recommendation,
+        )
+
+        stored_context = repository.save(
+            db,
+            updated_context,
+            session_id="preserve-user-session",
+        )
+
+        assert stored_context.user_id == user.id
+
+    finally:
+        db.close()        

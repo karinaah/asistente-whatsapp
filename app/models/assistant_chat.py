@@ -15,6 +15,10 @@ class AssistantChatRequest(BaseModel):
         max_length=100,
     )
 
+    user_id: int | None = Field(
+        default=None,
+        ge=1,
+    )
 
     plan_date: date = Field(
         default_factory=date.today,

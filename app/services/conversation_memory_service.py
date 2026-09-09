@@ -56,6 +56,7 @@ class ConversationMemoryService:
         intent: AssistantIntent,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
         if db is not None:
             context = self.repository.get(
@@ -68,7 +69,10 @@ class ConversationMemoryService:
                 db,
                 context,
                 session_id=session_id,
+                user_id=user_id,
             )
+
+
             return
 
         self._context.last_intent = intent
@@ -78,6 +82,7 @@ class ConversationMemoryService:
         recommendation: Recommendation,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,   
     ) -> None:
         if db is not None:
             context = self.repository.get(
@@ -93,6 +98,7 @@ class ConversationMemoryService:
                 db,
                 context,
                 session_id=session_id,
+                user_id=user_id,
             )
             return
 
@@ -105,6 +111,7 @@ class ConversationMemoryService:
         plan: PlanningResponse,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
         if db is not None:
             context = self.repository.get(
@@ -118,6 +125,7 @@ class ConversationMemoryService:
                 db,
                 context,
                 session_id=session_id,
+                user_id=user_id,
             )
             return
 
@@ -128,6 +136,7 @@ class ConversationMemoryService:
         task_id: int,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
         if db is not None:
             context = self.repository.get(
@@ -142,6 +151,7 @@ class ConversationMemoryService:
                 db,
                 context,
                 session_id=session_id,
+                user_id=user_id,
             )
             return
 
@@ -152,6 +162,7 @@ class ConversationMemoryService:
         self,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
         if db is not None:
             context = self.repository.get(
@@ -166,6 +177,7 @@ class ConversationMemoryService:
                 db,
                 context,
                 session_id=session_id,
+                user_id=user_id,
             )
             return
 

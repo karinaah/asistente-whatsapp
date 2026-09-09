@@ -11,6 +11,7 @@ from app.models.conversation_context_db import ConversationContextDB
 from app.repositories.conversation_memory_repository import (
     ConversationMemoryRepository,
 )
+from app.models.user_db import UserDB
 
 def test_context_starts_empty():
     service = ConversationMemoryService()
@@ -93,4 +94,55 @@ def test_context_can_be_persisted_in_database():
         )
 
     finally:
-        db.close()    
+        db.close()  
+
+def test_persisted_context_can_be_associated_with_user():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
+
+    Base.metadata.create_all(bind=engine)
+
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = ConversationMemoryService(
+            repository=ConversationMemoryRepository()
+        )
+
+        service.set_last_intent(
+            AssistantIntent.planning,
+            db=db,
+            session_id="work",
+            user_id=user.id,
+        )
+
+        context_db = (
+            db.query(ConversationContextDB)
+            .filter(
+                ConversationContextDB.session_id
+                == "work"
+            )
+            .first()
+        )
+
+        assert context_db is not None
+        assert context_db.user_id == user.id
+
+    finally:
+        db.close()          

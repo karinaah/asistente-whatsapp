@@ -115,12 +115,13 @@ class AssistantChatService:
         intent = self.intent_detector.detect(
             request.message
         )
+
         self.conversation_memory_service.set_last_intent(
             intent,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
-
 
         if intent == AssistantIntent.planning:
             return self._handle_planning(
@@ -212,6 +213,7 @@ class AssistantChatService:
             result.response,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
 
 
@@ -410,6 +412,7 @@ class AssistantChatService:
                     active_task.id,
                     db=db,
                     session_id=request.session_id,
+                    user_id=request.user_id,
                 )
             )
 
@@ -509,6 +512,7 @@ class AssistantChatService:
             self.conversation_memory_service.clear_awaiting_remaining_minutes(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
 
 
@@ -646,6 +650,7 @@ class AssistantChatService:
             recommendation,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
 
 

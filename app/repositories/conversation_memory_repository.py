@@ -71,13 +71,14 @@ class ConversationMemoryRepository:
             .first()
         )
 
+
         if context_db is None:
             context_db = ConversationContextDB(
                 session_id=session_id,
                 user_id=user_id,
             )
             db.add(context_db)
-        else:
+        elif user_id is not None:
             context_db.user_id = user_id
 
 
