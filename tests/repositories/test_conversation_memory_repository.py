@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.database import Base
 from app.models.conversation_context import ConversationContext
 from app.models.conversation_context_db import ConversationContextDB
+from app.models.user_db import UserDB
 from app.repositories.conversation_memory_repository import (
     ConversationMemoryRepository,
 )
@@ -128,6 +129,63 @@ def test_sessions_keep_independent_contexts():
             stored_personal.last_intent
             == AssistantIntent.recommendation
         )
+
+    finally:
+        db.close()        
+
+
+def test_conversation_context_can_be_associated_with_user():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        context_db = ConversationContextDB(
+            session_id="user-session",
+            user_id=user.id,
+        )
+
+        db.add(context_db)
+        db.commit()
+        db.refresh(context_db)
+
+        assert context_db.user_id == user.id
+
+    finally:
+        db.close()        
+
+def test_save_associates_context_with_user():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        repository = ConversationMemoryRepository()
+
+        context = ConversationContext(
+            last_intent=AssistantIntent.planning,
+        )
+
+        stored_context = repository.save(
+            db,
+            context,
+            session_id="work-user-session",
+            user_id=user.id,
+        )
+
+        assert stored_context.user_id == user.id
 
     finally:
         db.close()        

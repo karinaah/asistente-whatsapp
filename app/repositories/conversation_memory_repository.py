@@ -54,11 +54,13 @@ class ConversationMemoryRepository:
             ),
         )
 
+
     def save(
         self,
         db: Session,
         context: ConversationContext,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> ConversationContextDB:
         context_db = (
             db.query(ConversationContextDB)
@@ -72,14 +74,12 @@ class ConversationMemoryRepository:
         if context_db is None:
             context_db = ConversationContextDB(
                 session_id=session_id,
+                user_id=user_id,
             )
             db.add(context_db)
+        else:
+            context_db.user_id = user_id
 
-
-
-        if context_db is None:
-            context_db = ConversationContextDB(id=1)
-            db.add(context_db)
 
         context_db.last_intent = (
             context.last_intent.value
