@@ -32,7 +32,7 @@ def test_chat_planning(monkeypatch):
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     response = service.chat(
@@ -310,7 +310,7 @@ def test_chat_stores_last_plan(monkeypatch):
     monkeypatch.setattr(
         service.planning_workflow_service,
         "create_plan_with_decisions_from_db",
-        lambda db, request: fake_result,
+        lambda db, request, user_id=None: fake_result,
     )
 
     service.chat(
@@ -697,9 +697,11 @@ def test_chat_planning_uses_current_time_for_today(
     def fake_create_plan(
         db,
         request,
+        user_id=None,
     ):
         captured_request["request"] = request
         return FakeResult()
+
 
     monkeypatch.setattr(
         service.planning_workflow_service,

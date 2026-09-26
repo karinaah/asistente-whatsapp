@@ -26,6 +26,7 @@ class PlanningWorkflowService:
         self,
         db: Session,
         request: PlanningFromDBRequest,
+        user_id: int | None = None,
     ) -> PlanningResponse:
         tasks = self.task_service.get_plannable(db)
 
@@ -43,8 +44,12 @@ class PlanningWorkflowService:
             request=request,
         )
 
+
         adaptive_profile = (
-            self.adaptive_profile_service.get(db)
+            self.adaptive_profile_service.get(
+                db,
+                user_id=user_id,
+            )
         )
 
         return self.planner_service.create_plan(
@@ -73,6 +78,7 @@ class PlanningWorkflowService:
         self,
         db: Session,
         request: PlanningFromDBRequest,
+        user_id: int | None = None,
     ) -> list[PlanningDecision]:
         tasks = self.task_service.get_plannable(db)
 
@@ -91,8 +97,11 @@ class PlanningWorkflowService:
         )
 
         adaptive_profile = (
-            self.adaptive_profile_service.get(db)
-        )
+            self.adaptive_profile_service.get(
+                db,
+                user_id=user_id,
+            )
+        )        
 
         return self.planner_service.explain_plan(
             request=planning_request,
@@ -103,6 +112,7 @@ class PlanningWorkflowService:
         self,
         db: Session,
         request: PlanningFromDBRequest,
+        user_id: int | None = None,
     ):
         tasks = self.task_service.get_plannable(db)
 
@@ -121,8 +131,12 @@ class PlanningWorkflowService:
         )
 
         adaptive_profile = (
-            self.adaptive_profile_service.get(db)
+            self.adaptive_profile_service.get(
+                db,
+                user_id=user_id,
+            )
         )
+
 
         return (
             self.planner_service

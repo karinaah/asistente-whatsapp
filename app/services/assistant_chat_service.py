@@ -201,11 +201,13 @@ class AssistantChatService:
             human_state=request.human_state,
         )
 
+
         result = (
             self.planning_workflow_service
             .create_plan_with_decisions_from_db(
                 db=db,
                 request=planning_request,
+                user_id=request.user_id,
             )
         )
 

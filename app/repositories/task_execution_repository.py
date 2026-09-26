@@ -11,8 +11,10 @@ class TaskExecutionRepository:
         self,
         db: Session,
         execution: TaskExecution,
+        user_id: int | None = None,
     ) -> TaskExecutionDB:
         execution_db = TaskExecutionDB(
+            user_id=user_id,
             task_id=execution.task_id,
             estimated_minutes=execution.estimated_minutes,
             actual_minutes=execution.actual_minutes,
@@ -63,3 +65,19 @@ class TaskExecutionRepository:
             )
             .all()
         )
+
+    def get_all_by_user(
+        self,
+        db: Session,
+        user_id: int,
+    ) -> list[TaskExecutionDB]:
+        return (
+            db.query(TaskExecutionDB)
+            .filter(
+                TaskExecutionDB.user_id == user_id
+            )
+            .order_by(
+                TaskExecutionDB.created_at.desc()
+            )
+            .all()
+        )    

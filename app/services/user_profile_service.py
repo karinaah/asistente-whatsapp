@@ -68,3 +68,23 @@ class UserProfileService:
                 ),
             )
         )    
+
+    def build_adaptive_profile(
+        self,
+        db: Session,
+        user_id: int,
+    ) -> AdaptiveProfile | None:
+        profile = self.get_profile(
+            db,
+            user_id=user_id,
+        )
+
+        if profile is None:
+            return None
+
+        return AdaptiveProfile(
+            generated_from_executions=0,
+            work_duration_multiplier=(
+                profile.work_duration_multiplier
+            ),
+        )    

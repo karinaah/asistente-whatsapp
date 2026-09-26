@@ -34,7 +34,7 @@ def test_create_plan_from_db_uses_plannable_tasks(
     monkeypatch.setattr(
         service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     request = PlanningFromDBRequest(
@@ -90,7 +90,7 @@ def test_global_availability_combines_work_and_personal_tasks(
     monkeypatch.setattr(
         service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     busy_block = TimeBlock(
@@ -177,7 +177,7 @@ def test_create_plan_from_db_excludes_future_tasks(
     monkeypatch.setattr(
         service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     request = PlanningFromDBRequest(
@@ -237,7 +237,7 @@ def test_create_plan_with_decisions_excludes_future_tasks(
     monkeypatch.setattr(
         service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     request = PlanningFromDBRequest(
@@ -264,3 +264,81 @@ def test_create_plan_with_decisions_excludes_future_tasks(
 
     assert "Tarea de hoy" in scheduled_titles
     assert "Tarea de mañana" not in scheduled_titles    
+
+def test_create_plan_uses_user_adaptive_profile(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    task = Task(
+        title="Preparar informe",
+        estimated_minutes=60,
+        category="trabajo",
+        context="trabajo",
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db: [task],
+    )
+
+    received_user_ids = []
+
+    def get_profile(
+        db,
+        user_id=None,
+    ):
+        received_user_ids.append(user_id)
+
+        from app.models.adaptive_profile import (
+            AdaptiveProfile,
+        )
+
+        return AdaptiveProfile(
+            generated_from_executions=5,
+            work_duration_multiplier=1.25,
+            confidence=0.25,
+        )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        get_profile,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date.fromisoformat(
+            "2026-08-10"
+        ),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+        context="trabajo",
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert received_user_ids == [123]
+
+    assert len(plan.scheduled_tasks) == 1
+
+    scheduled = plan.scheduled_tasks[0]
+
+    duration_minutes = int(
+        (
+            scheduled.end_time
+            - scheduled.start_time
+        ).total_seconds()
+        / 60
+    )
+
+    assert duration_minutes == 75
+
+    # La estimación original no debe modificarse.
+    assert task.estimated_minutes == 60    

@@ -174,3 +174,46 @@ def test_user_profile_service_persists_learned_profile():
 
     finally:
         db.close()        
+
+def test_user_profile_service_builds_adaptive_profile():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = UserProfileService(
+            repository=UserProfileRepository()
+        )
+
+        service.create_profile(
+            db,
+            user_id=user.id,
+        )
+
+        service.update_work_duration_multiplier(
+            db,
+            user_id=user.id,
+            multiplier=1.25,
+        )
+
+        adaptive_profile = (
+            service.build_adaptive_profile(
+                db,
+                user_id=user.id,
+            )
+        )
+
+        assert adaptive_profile is not None
+        assert (
+            adaptive_profile.work_duration_multiplier
+            == 1.25
+        )
+
+    finally:
+        db.close()        
