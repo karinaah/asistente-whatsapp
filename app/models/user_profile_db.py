@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer
+from sqlalchemy import DateTime, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -21,6 +21,12 @@ class UserProfileDB(Base):
         unique=True,
         nullable=False,
     )
+
+    work_duration_multiplier: Mapped[float] = mapped_column(
+        Float,
+        default=1.0,
+        nullable=False,
+    )    
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

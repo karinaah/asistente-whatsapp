@@ -31,3 +31,24 @@ class UserProfileRepository:
             )
             .first()
         )
+
+    def update_work_duration_multiplier(
+        self,
+        db: Session,
+        user_id: int,
+        multiplier: float,
+    ) -> UserProfileDB | None:
+        profile = self.get_by_user_id(
+            db,
+            user_id=user_id,
+        )
+
+        if profile is None:
+            return None
+
+        profile.work_duration_multiplier = multiplier
+
+        db.commit()
+        db.refresh(profile)
+
+        return profile    

@@ -41,6 +41,6 @@ def test_user_can_have_persistent_profile():
 
         assert profile.id is not None
         assert profile.user_id == user.id
-
+        assert profile.work_duration_multiplier == 1.0
     finally:
         db.close()

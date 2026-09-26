@@ -82,3 +82,40 @@ def test_get_profile_by_user_id():
 
     finally:
         db.close()
+
+
+def test_update_work_duration_multiplier():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Cinthia",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        repository = UserProfileRepository()
+
+        repository.create(
+            db,
+            user_id=user.id,
+        )
+
+        updated_profile = (
+            repository.update_work_duration_multiplier(
+                db,
+                user_id=user.id,
+                multiplier=1.25,
+            )
+        )
+
+        assert updated_profile is not None
+        assert (
+            updated_profile.work_duration_multiplier
+            == 1.25
+        )
+
+    finally:
+        db.close()        
