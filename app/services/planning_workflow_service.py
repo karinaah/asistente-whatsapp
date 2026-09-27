@@ -13,7 +13,9 @@ from app.services.task_service import TaskService
 from app.models.planning_decision import (
     PlanningDecision,
 )
-
+from app.services.routine_occurrence_service import (
+    RoutineOccurrenceService,
+)
 class PlanningWorkflowService:
     def __init__(self) -> None:
         self.task_service = TaskService()
@@ -21,13 +23,37 @@ class PlanningWorkflowService:
         self.adaptive_profile_service = (
             AdaptiveProfileService()
         )
+        self.routine_occurrence_service = (
+            RoutineOccurrenceService()
+        )
 
+    def generate_routines_for_plan(
+        self,
+        db: Session,
+        request: PlanningFromDBRequest,
+        user_id: int | None,
+    ) -> None:
+        if user_id is None:
+            return
+
+        self.routine_occurrence_service.generate_for_user(
+            db,
+            user_id=user_id,
+            target_date=request.plan_date,
+        )
+        
     def create_plan_from_db(
         self,
         db: Session,
         request: PlanningFromDBRequest,
         user_id: int | None = None,
     ) -> PlanningResponse:
+        self.generate_routines_for_plan(
+            db,
+            request=request,
+            user_id=user_id,
+        )
+
         tasks = self.task_service.get_plannable(db)
 
         tasks = [
@@ -43,7 +69,6 @@ class PlanningWorkflowService:
             tasks=tasks,
             request=request,
         )
-
 
         adaptive_profile = (
             self.adaptive_profile_service.get(

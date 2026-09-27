@@ -269,7 +269,11 @@ def test_create_plan_uses_user_adaptive_profile(
     monkeypatch,
 ):
     service = PlanningWorkflowService()
-
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        lambda db, user_id, target_date: [],
+    )
     task = Task(
         title="Preparar informe",
         estimated_minutes=60,
@@ -342,3 +346,73 @@ def test_create_plan_uses_user_adaptive_profile(
 
     # La estimación original no debe modificarse.
     assert task.estimated_minutes == 60    
+
+def test_create_plan_generates_routines_before_loading_tasks(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    call_order = []
+
+    def generate_for_user(
+        db,
+        user_id,
+        target_date,
+    ):
+        call_order.append(
+            (
+                "routines",
+                user_id,
+                target_date,
+            )
+        )
+
+        return []
+
+    def get_plannable(db):
+        call_order.append(
+            ("tasks",)
+        )
+
+        return []
+
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        generate_for_user,
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        get_plannable,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    service.create_plan_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert call_order == [
+        (
+            "routines",
+            123,
+            date(2026, 9, 28),
+        ),
+        ("tasks",),
+    ]    

@@ -74,6 +74,8 @@ class Task(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int | None = None
+    user_id: int | None = None
+    routine_id: int | None = None
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     estimated_minutes: int = Field(gt=0, le=1440)

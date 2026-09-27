@@ -1,5 +1,12 @@
 from datetime import date, datetime, time
-from sqlalchemy import Date, DateTime, Integer, String, Time
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Time,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -11,6 +18,20 @@ class TaskDB(Base):
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
+        index=True,
+    )
+
+    user_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    routine_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("routines.id"),
+        nullable=True,
         index=True,
     )
 

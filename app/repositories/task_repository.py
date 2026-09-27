@@ -8,6 +8,8 @@ from app.models.task import TaskStatus
 class TaskRepository:
     def save(self, db: Session, task: Task) -> TaskDB:
         task_db = TaskDB(
+            user_id=task.user_id,
+            routine_id=task.routine_id,
             title=task.title,
             description=task.description,
             estimated_minutes=task.estimated_minutes,
@@ -178,4 +180,19 @@ class TaskRepository:
         db.refresh(task_db)
 
         return task_db      
-    
+
+
+    def get_by_routine_and_date(
+        self,
+        db: Session,
+        routine_id: int,
+        preferred_date: date,
+    ) -> TaskDB | None:
+        return (
+            db.query(TaskDB)
+            .filter(
+                TaskDB.routine_id == routine_id,
+                TaskDB.preferred_date == preferred_date,
+            )
+            .first()
+        )    
