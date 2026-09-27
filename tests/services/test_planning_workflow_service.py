@@ -426,3 +426,162 @@ def test_create_plan_generates_routines_before_loading_tasks(
             123,
         ),
     ]
+
+
+def test_explain_plan_generates_routines_and_scopes_tasks_by_user(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    call_order = []
+
+    def generate_for_user(
+        db,
+        user_id,
+        target_date,
+    ):
+        call_order.append(
+            (
+                "routines",
+                user_id,
+                target_date,
+            )
+        )
+
+        return []
+
+    def get_plannable(
+        db,
+        user_id=None,
+    ):
+        call_order.append(
+            (
+                "tasks",
+                user_id,
+            )
+        )
+
+        return []
+
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        generate_for_user,
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        get_plannable,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    service.explain_plan_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert call_order == [
+        (
+            "routines",
+            123,
+            date(2026, 9, 28),
+        ),
+        (
+            "tasks",
+            123,
+        ),
+    ]    
+
+def test_create_plan_with_decisions_generates_routines_and_scopes_tasks_by_user(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    call_order = []
+
+    def generate_for_user(
+        db,
+        user_id,
+        target_date,
+    ):
+        call_order.append(
+            (
+                "routines",
+                user_id,
+                target_date,
+            )
+        )
+
+        return []
+
+    def get_plannable(
+        db,
+        user_id=None,
+    ):
+        call_order.append(
+            (
+                "tasks",
+                user_id,
+            )
+        )
+
+        return []
+
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        generate_for_user,
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        get_plannable,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    service.create_plan_with_decisions_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert call_order == [
+        (
+            "routines",
+            123,
+            date(2026, 9, 28),
+        ),
+        (
+            "tasks",
+            123,
+        ),
+    ]    

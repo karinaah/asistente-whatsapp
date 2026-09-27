@@ -108,7 +108,16 @@ class PlanningWorkflowService:
         request: PlanningFromDBRequest,
         user_id: int | None = None,
     ) -> list[PlanningDecision]:
-        tasks = self.task_service.get_plannable(db)
+        self.generate_routines_for_plan(
+            db,
+            request=request,
+            user_id=user_id,
+        )
+
+        tasks = self.task_service.get_plannable(
+            db,
+            user_id=user_id,
+        )
 
         tasks = [
             task
@@ -136,13 +145,24 @@ class PlanningWorkflowService:
             adaptive_profile=adaptive_profile,
         )    
     
+
     def create_plan_with_decisions_from_db(
         self,
         db: Session,
         request: PlanningFromDBRequest,
         user_id: int | None = None,
     ):
-        tasks = self.task_service.get_plannable(db)
+        self.generate_routines_for_plan(
+            db,
+            request=request,
+            user_id=user_id,
+        )
+
+        tasks = self.task_service.get_plannable(
+            db,
+            user_id=user_id,
+        )
+
 
         tasks = [
             task

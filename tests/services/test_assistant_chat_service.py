@@ -26,7 +26,7 @@ def test_chat_planning(monkeypatch):
     monkeypatch.setattr(
         service.planning_workflow_service.task_service,
         "get_plannable",
-        lambda db: [],
+        lambda db, user_id=None: [],
     )
 
     monkeypatch.setattr(
