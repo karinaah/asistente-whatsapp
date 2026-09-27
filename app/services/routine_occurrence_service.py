@@ -37,6 +37,7 @@ class RoutineOccurrenceService:
             return None
 
         return Task(
+            user_id=routine.user_id,
             routine_id=routine.id,
             title=routine.title,
             description=routine.description,

@@ -89,6 +89,7 @@ def test_create_task_from_routine_occurrence():
 
     assert task is not None
     assert task.routine_id == 10
+    assert task.user_id == 1
     assert task.title == "Yoga"
     assert task.preferred_date == date(2026, 9, 28)
     assert task.preferred_start_time == time(19, 0)

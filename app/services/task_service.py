@@ -119,14 +119,26 @@ class TaskService:
         return task
     
     
-    def get_plannable(self, db: Session) -> list[Task]:
+    def get_plannable(
+        self,
+        db: Session,
+        user_id: int | None = None,
+    ) -> list[Task]:
         tasks = self.get_all(db)
 
         return [
             task
             for task in tasks
-            if task.status in {
-                TaskStatus.pending,
-                TaskStatus.in_progress,
-            }
-        ]    
+            if (
+                task.status
+                in {
+                    TaskStatus.pending,
+                    TaskStatus.in_progress,
+                }
+                and (
+                    user_id is None
+                    or task.user_id is None
+                    or task.user_id == user_id
+                )
+            )
+        ] 
