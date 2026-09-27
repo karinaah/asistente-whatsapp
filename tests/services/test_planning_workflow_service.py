@@ -28,7 +28,7 @@ def test_create_plan_from_db_uses_plannable_tasks(
     monkeypatch.setattr(
         service.task_service,
         "get_plannable",
-        lambda db: [task],
+        lambda db, user_id=None: [task],
     )
 
     monkeypatch.setattr(
@@ -81,7 +81,7 @@ def test_global_availability_combines_work_and_personal_tasks(
     monkeypatch.setattr(
         service.task_service,
         "get_plannable",
-        lambda db: [
+        lambda db, user_id=None: [
             work_task,
             personal_task,
         ],
@@ -167,7 +167,7 @@ def test_create_plan_from_db_excludes_future_tasks(
     monkeypatch.setattr(
         service.task_service,
         "get_plannable",
-        lambda db: [
+        lambda db, user_id=None: [
             today_task,
             undated_task,
             tomorrow_task,
@@ -228,7 +228,7 @@ def test_create_plan_with_decisions_excludes_future_tasks(
     monkeypatch.setattr(
         service.task_service,
         "get_plannable",
-        lambda db: [
+        lambda db, user_id=None: [
             today_task,
             tomorrow_task,
         ],
@@ -284,7 +284,7 @@ def test_create_plan_uses_user_adaptive_profile(
     monkeypatch.setattr(
         service.task_service,
         "get_plannable",
-        lambda db: [task],
+        lambda db, user_id=None: [task],
     )
 
     received_user_ids = []
@@ -369,9 +369,16 @@ def test_create_plan_generates_routines_before_loading_tasks(
 
         return []
 
-    def get_plannable(db):
+
+    def get_plannable(
+        db,
+        user_id=None,
+    ):
         call_order.append(
-            ("tasks",)
+            (
+                "tasks",
+                user_id,
+            )
         )
 
         return []
@@ -414,5 +421,8 @@ def test_create_plan_generates_routines_before_loading_tasks(
             123,
             date(2026, 9, 28),
         ),
-        ("tasks",),
-    ]    
+        (
+            "tasks",
+            123,
+        ),
+    ]

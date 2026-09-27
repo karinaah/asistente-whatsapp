@@ -54,8 +54,11 @@ class PlanningWorkflowService:
             user_id=user_id,
         )
 
-        tasks = self.task_service.get_plannable(db)
 
+        tasks = self.task_service.get_plannable(
+            db,
+            user_id=user_id,
+        )
         tasks = [
             task
             for task in tasks
