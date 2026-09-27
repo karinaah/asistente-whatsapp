@@ -245,17 +245,42 @@ def test_rebuild_persists_learning_in_user_profile(
             )
         )
 
+
         assert rebuilt_profile.work_duration_multiplier == 1.5
+        assert rebuilt_profile.generated_from_executions == 1
+        assert rebuilt_profile.confidence == 0.05
 
         assert stored_user_profile is not None
         assert (
             stored_user_profile.work_duration_multiplier
             == 1.5
         )
+        assert (
+            stored_user_profile.generated_from_executions
+            == 1
+        )
+        assert stored_user_profile.confidence == 0.05
+
+        persisted_profile = service.get(
+            db,
+            user_id=user.id,
+        )
+
+        assert persisted_profile is not None
+        assert (
+            persisted_profile.work_duration_multiplier
+            == 1.5
+        )
+        assert (
+            persisted_profile.generated_from_executions
+            == 1
+        )
+        assert persisted_profile.confidence == 0.05
 
         # El camino por usuario no debe crear
         # el antiguo perfil global.
         assert service.get(db) is None
+
 
     finally:
         db.close()    
