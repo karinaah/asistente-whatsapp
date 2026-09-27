@@ -20,11 +20,12 @@ from app.services.task_service import TaskService
 from app.models.task import Task, TaskUpdate
 from app.models.assistant_chat import AssistantChatRequest
 from app.services.assistant_chat_service import AssistantChatService
-
+from app.services.user_service import UserService
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
 assistant_chat_service = AssistantChatService()
+user_service = UserService()
 
 @router.get("/web")
 def home(
@@ -179,13 +180,24 @@ def edit_task_from_web(
     )
 
 @router.get("/web/chat")
-def chat_page(request: Request):
+def chat_page(
+    request: Request,
+    db: Session = Depends(get_db),
+):
     session_id = request.cookies.get(
         "aura_session_id",
     )
 
     if session_id is None:
         session_id = str(uuid4())
+
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
 
     response = templates.TemplateResponse(
         request=request,
@@ -200,6 +212,13 @@ def chat_page(request: Request):
         samesite="lax",
     )
 
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
     return response
 
 
@@ -209,17 +228,25 @@ def chat_message(
     message: str = Form(...),
     db: Session = Depends(get_db),
 ):
+
     session_id = request.cookies.get(
         "aura_session_id",
         "default",
     )
 
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
     chat_request = AssistantChatRequest(
         message=message,
         session_id=session_id,
+        user_id=(
+            int(user_id)
+            if user_id is not None
+            else None
+        ),
     )
-
-
 
     response = assistant_chat_service.chat(
         db=db,
