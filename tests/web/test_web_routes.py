@@ -184,3 +184,142 @@ def test_web_chat_persists_memory_with_cookie_user():
 
     finally:
         db.close()  
+
+def test_web_home_shows_pending_notification():
+    client.cookies.clear()
+
+    first_response = client.get("/web")
+
+    assert first_response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.notification import Notification
+    from app.repositories.notification_repository import (
+        NotificationRepository,
+    )
+
+    db = SessionLocal()
+
+    try:
+        repository = NotificationRepository()
+
+        notification = repository.create(
+            db,
+            Notification(
+                user_id=int(user_id),
+                title="Recordatorio AURA",
+                message=(
+                    "Tienes una tarea pendiente "
+                    "para completar hoy."
+                ),
+            ),
+        )
+
+        assert notification.id is not None
+
+    finally:
+        db.close()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+    assert "Recordatorio AURA" in response.text
+    assert (
+        "Tienes una tarea pendiente "
+        "para completar hoy."
+        in response.text
+    )        
+
+def test_web_notification_disappears_after_marking_as_read():
+    client.cookies.clear()
+
+    first_response = client.get("/web")
+
+    assert first_response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.notification import (
+        Notification,
+        NotificationStatus,
+    )
+    from app.models.notification_db import NotificationDB
+    from app.repositories.notification_repository import (
+        NotificationRepository,
+    )
+
+    db = SessionLocal()
+
+    try:
+        repository = NotificationRepository()
+
+        notification = repository.create(
+            db,
+            Notification(
+                user_id=int(user_id),
+                title="Notificación para cerrar",
+                message=(
+                    "Esta notificación debe "
+                    "desaparecer después de leerla."
+                ),
+            ),
+        )
+
+        notification_id = notification.id
+
+    finally:
+        db.close()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+    assert "Notificación para cerrar" in response.text
+
+    read_response = client.post(
+        f"/web/notifications/{notification_id}/read",
+        follow_redirects=False,
+    )
+
+    assert read_response.status_code == 303
+    assert read_response.headers["location"] == "/web"
+
+    db = SessionLocal()
+
+    try:
+        stored_notification = (
+            db.query(NotificationDB)
+            .filter(
+                NotificationDB.id
+                == notification_id
+            )
+            .first()
+        )
+
+        assert stored_notification is not None
+        assert (
+            stored_notification.status
+            == NotificationStatus.READ.value
+        )
+        assert stored_notification.read_at is not None
+
+    finally:
+        db.close()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+    assert (
+        "Notificación para cerrar"
+        not in response.text
+    )    

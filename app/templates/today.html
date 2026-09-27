@@ -23,6 +23,27 @@
             <p>Hoy: {{ today }}</p>
         </div>
 
+        {% if notifications %}
+            <div class="notifications">
+                <h2>Notificaciones</h2>
+
+                {% for notification in notifications %}
+                    <div class="notification-card">
+                        <strong>{{ notification.title }}</strong>
+                        <p>{{ notification.message }}</p>
+
+                        <form
+                            method="post"
+                            action="/web/notifications/{{ notification.id }}/read"
+                        >
+                            <button type="submit">
+                                Marcar como leída
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         <div class="summary">
             <div class="summary-card">
                 <strong>{{ plan.scheduled_tasks | length }}</strong>

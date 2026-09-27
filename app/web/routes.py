@@ -21,11 +21,14 @@ from app.models.task import Task, TaskUpdate
 from app.models.assistant_chat import AssistantChatRequest
 from app.services.assistant_chat_service import AssistantChatService
 from app.services.user_service import UserService
+from app.services.notification_service import NotificationService
+
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
 assistant_chat_service = AssistantChatService()
 user_service = UserService()
+notification_service = NotificationService()
 
 @router.get("/web")
 def home(
@@ -36,22 +39,44 @@ def home(
     ),
 ):
     today = date.today()
+
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
     planning_request = PlanningFromDBRequest()
 
     plan = planning_workflow_service.create_plan_from_db(
         db=db,
         request=planning_request,
+        user_id=int(user_id),
     )
-
-    return templates.TemplateResponse(
+    notifications = notification_service.get_pending_for_user(
+        db=db,
+        user_id=int(user_id),
+    )
+    response = templates.TemplateResponse(
         request=request,
         name="today.html",
         context={
             "today": today,
             "plan": plan,
+            "notifications": notifications,
         },
-
     )
+
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
 
 @router.post("/web/tasks/{task_id}/complete")
 def complete_task(
@@ -260,4 +285,20 @@ def chat_message(
             "message": message,
             "answer": response.answer,
         },
+    )
+
+
+@router.post("/web/notifications/{notification_id}/read")
+def read_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+):
+    notification_service.mark_read(
+        db=db,
+        notification_id=notification_id,
+    )
+
+    return RedirectResponse(
+        url="/web",
+        status_code=303,
     )
