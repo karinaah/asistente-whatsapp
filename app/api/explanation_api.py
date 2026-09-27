@@ -192,11 +192,16 @@ def explain_planning(
     "/learning",
     response_model=Explanation,
 )
+
 def explain_learning(
+    user_id: int | None = None,
     db: Session = Depends(get_db),
 ) -> Explanation:
     executions = (
-        task_execution_service.get_all_for_learning(db)
+        task_execution_service.get_all_for_learning(
+            db,
+            user_id=user_id,
+        )
     )
 
     insights = learning_service.get_estimation_insights(
