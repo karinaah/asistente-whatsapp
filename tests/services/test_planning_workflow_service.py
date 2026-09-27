@@ -269,11 +269,30 @@ def test_create_plan_uses_user_adaptive_profile(
     monkeypatch,
 ):
     service = PlanningWorkflowService()
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
     monkeypatch.setattr(
         service.routine_occurrence_service,
         "generate_for_user",
         lambda db, user_id, target_date: [],
     )
+
     task = Task(
         title="Preparar informe",
         estimated_minutes=60,
@@ -345,13 +364,30 @@ def test_create_plan_uses_user_adaptive_profile(
     assert duration_minutes == 75
 
     # La estimación original no debe modificarse.
-    assert task.estimated_minutes == 60    
+    assert task.estimated_minutes == 60   
 
 def test_create_plan_generates_routines_before_loading_tasks(
     monkeypatch,
 ):
     service = PlanningWorkflowService()
 
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
     call_order = []
 
     def generate_for_user(
@@ -368,7 +404,6 @@ def test_create_plan_generates_routines_before_loading_tasks(
         )
 
         return []
-
 
     def get_plannable(
         db,
@@ -433,6 +468,23 @@ def test_explain_plan_generates_routines_and_scopes_tasks_by_user(
 ):
     service = PlanningWorkflowService()
 
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
     call_order = []
 
     def generate_for_user(
@@ -505,13 +557,30 @@ def test_explain_plan_generates_routines_and_scopes_tasks_by_user(
             "tasks",
             123,
         ),
-    ]    
+    ]
 
 def test_create_plan_with_decisions_generates_routines_and_scopes_tasks_by_user(
     monkeypatch,
 ):
     service = PlanningWorkflowService()
 
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
     call_order = []
 
     def generate_for_user(
@@ -584,4 +653,237 @@ def test_create_plan_with_decisions_generates_routines_and_scopes_tasks_by_user(
             "tasks",
             123,
         ),
-    ]    
+    ]
+
+def test_create_plan_uses_recurring_availability(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    task = Task(
+        title="Preparar informe",
+        estimated_minutes=60,
+    )
+
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        lambda db, user_id, target_date: [],
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: [task],
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    received_arguments = []
+
+    def resolve_day_hours(
+        db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour,
+    ):
+        received_arguments.append(
+            (
+                user_id,
+                target_date,
+                fallback_start_hour,
+                fallback_end_hour,
+            )
+        )
+
+        return 9, 17
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        resolve_day_hours,
+    )
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert received_arguments == [
+        (
+            123,
+            date(2026, 9, 28),
+            8,
+            20,
+        )
+    ]
+
+    assert len(plan.scheduled_tasks) == 1
+
+    scheduled = plan.scheduled_tasks[0]
+
+    assert scheduled.start_time == datetime(
+        2026,
+        9,
+        28,
+        9,
+        0,
+    )
+
+    assert scheduled.end_time == datetime(
+        2026,
+        9,
+        28,
+        10,
+        0,
+    )    
+
+def test_create_plan_respects_gap_between_availability_intervals(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    task_1 = Task(
+        title="Tarea 1",
+        estimated_minutes=60,
+    )
+
+    task_2 = Task(
+        title="Tarea 2",
+        estimated_minutes=60,
+    )
+
+    monkeypatch.setattr(
+        service.routine_occurrence_service,
+        "generate_for_user",
+        lambda db, user_id, target_date: [],
+    )
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: [
+            task_1,
+            task_2,
+        ],
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            8,
+            18,
+        ),
+    )
+
+    unavailable_block = TimeBlock(
+        start_time=datetime(
+            2026,
+            9,
+            28,
+            13,
+            0,
+        ),
+        end_time=datetime(
+            2026,
+            9,
+            28,
+            14,
+            0,
+        ),
+        title="No disponible",
+        block_type=BlockType.BREAK,
+    )
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [
+            unavailable_block
+        ],
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        planning_start_time=datetime(
+            2026,
+            9,
+            28,
+            12,
+            0,
+        ).time(),
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+        user_id=123,
+    )
+
+    assert len(plan.scheduled_tasks) == 2
+
+    first = plan.scheduled_tasks[0]
+    second = plan.scheduled_tasks[1]
+
+    assert first.start_time == datetime(
+        2026,
+        9,
+        28,
+        12,
+        0,
+    )
+    assert first.end_time == datetime(
+        2026,
+        9,
+        28,
+        13,
+        0,
+    )
+
+    assert second.start_time == datetime(
+        2026,
+        9,
+        28,
+        14,
+        0,
+    )
+    assert second.end_time == datetime(
+        2026,
+        9,
+        28,
+        15,
+        0,
+    )    

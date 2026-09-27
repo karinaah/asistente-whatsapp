@@ -16,6 +16,9 @@ from app.models.planning_decision import (
 from app.services.routine_occurrence_service import (
     RoutineOccurrenceService,
 )
+from app.services.recurring_availability_service import (
+    RecurringAvailabilityService,
+)
 class PlanningWorkflowService:
     def __init__(self) -> None:
         self.task_service = TaskService()
@@ -25,6 +28,9 @@ class PlanningWorkflowService:
         )
         self.routine_occurrence_service = (
             RoutineOccurrenceService()
+        )
+        self.recurring_availability_service = (
+            RecurringAvailabilityService()
         )
 
     def generate_routines_for_plan(
@@ -68,10 +74,13 @@ class PlanningWorkflowService:
             )
         ]
 
+
         planning_request = self.build_planning_request(
+            db=db,
             tasks=tasks,
             request=request,
-        )
+            user_id=user_id,
+        )        
 
         adaptive_profile = (
             self.adaptive_profile_service.get(
@@ -88,19 +97,59 @@ class PlanningWorkflowService:
 
     def build_planning_request(
         self,
+        db: Session,
         tasks,
         request: PlanningFromDBRequest,
+        user_id: int | None = None,
     ) -> PlanningRequest:
+        day_start_hour = request.day_start_hour
+        day_end_hour = request.day_end_hour
+        busy_blocks = list(request.busy_blocks)
+
+        if user_id is not None:
+            (
+                day_start_hour,
+                day_end_hour,
+            ) = (
+                self.recurring_availability_service
+                .resolve_day_hours(
+                    db,
+                    user_id=user_id,
+                    target_date=request.plan_date,
+                    fallback_start_hour=(
+                        request.day_start_hour
+                    ),
+                    fallback_end_hour=(
+                        request.day_end_hour
+                    ),
+                )
+            )
+
+            availability_blocks = (
+                self.recurring_availability_service
+                .build_unavailable_blocks(
+                    db,
+                    user_id=user_id,
+                    target_date=request.plan_date,
+                )
+            )
+
+            busy_blocks.extend(
+                availability_blocks
+            )
+
         return PlanningRequest(
             tasks=tasks,
             plan_date=request.plan_date,
-            day_start_hour=request.day_start_hour,
-            planning_start_time=request.planning_start_time,
-            day_end_hour=request.day_end_hour,
+            day_start_hour=day_start_hour,
+            planning_start_time=(
+                request.planning_start_time
+            ),
+            day_end_hour=day_end_hour,
             break_minutes=request.break_minutes,
-            busy_blocks=request.busy_blocks,
+            busy_blocks=busy_blocks,
             context=request.context,
-        )    
+        )
     
     def explain_plan_from_db(
         self,
@@ -128,11 +177,13 @@ class PlanningWorkflowService:
             )
         ]
 
+
         planning_request = self.build_planning_request(
+            db=db,
             tasks=tasks,
             request=request,
+            user_id=user_id,
         )
-
         adaptive_profile = (
             self.adaptive_profile_service.get(
                 db,
@@ -173,9 +224,12 @@ class PlanningWorkflowService:
             )
         ]
 
+
         planning_request = self.build_planning_request(
+            db=db,
             tasks=tasks,
             request=request,
+            user_id=user_id,
         )
 
         adaptive_profile = (

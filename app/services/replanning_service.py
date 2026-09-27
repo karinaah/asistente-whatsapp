@@ -51,14 +51,15 @@ class ReplanningService:
             busy_blocks=busy_blocks or [],
         )
 
+
         planning_request = (
             self.planning_workflow_service
             .build_planning_request(
+                db=db,
                 tasks=tasks_for_day,
                 request=request,
             )
         )
-
         adaptive_profile = (
             self.planning_workflow_service
             .adaptive_profile_service
@@ -133,14 +134,15 @@ class ReplanningService:
             busy_blocks=request.busy_blocks,
         )
 
+
         direct_request = (
             self.planning_workflow_service
             .build_planning_request(
+                db=db,
                 tasks=adjusted_tasks,
                 request=planning_request,
             )
         )
-
         adaptive_profile = (
             self.planning_workflow_service
             .adaptive_profile_service
