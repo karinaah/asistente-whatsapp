@@ -83,7 +83,7 @@ def test_chat_learning(monkeypatch):
     monkeypatch.setattr(
         service.task_execution_service,
         "get_all_for_learning",
-        lambda db: [],
+        lambda db, user_id=None: [],
     )
 
     monkeypatch.setattr(
@@ -104,6 +104,41 @@ def test_chat_learning(monkeypatch):
         in response.answer.lower()
     )
 
+def test_chat_learning_uses_request_user_id(
+    monkeypatch,
+):
+    service = AssistantChatService()
+
+    captured_user_ids = []
+
+    def fake_get_all_for_learning(
+        db,
+        user_id=None,
+    ):
+        captured_user_ids.append(user_id)
+        return []
+
+    monkeypatch.setattr(
+        service.task_execution_service,
+        "get_all_for_learning",
+        fake_get_all_for_learning,
+    )
+
+    monkeypatch.setattr(
+        service.learning_service,
+        "get_estimation_insights",
+        lambda executions: [],
+    )
+
+    service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="¿Qué has aprendido?",
+            user_id=123,
+        ),
+    )
+
+    assert captured_user_ids == [123]
 
 def test_chat_explanation(monkeypatch):
     service = AssistantChatService()

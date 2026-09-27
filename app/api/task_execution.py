@@ -23,11 +23,13 @@ service = TaskExecutionService()
 )
 def create_task_execution(
     execution: TaskExecution,
+    user_id: int | None = None,
     db: Session = Depends(get_db),
 ) -> TaskExecution:
     service.save(
         db=db,
         execution=execution,
+        user_id=user_id,
     )
 
     return execution

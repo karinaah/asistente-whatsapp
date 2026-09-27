@@ -675,7 +675,10 @@ class AssistantChatService:
     ) -> AssistantChatResponse:
         executions = (
             self.task_execution_service
-            .get_all_for_learning(db)
+            .get_all_for_learning(
+                db,
+                user_id=request.user_id,
+            )
         )
 
         insights = (
