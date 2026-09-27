@@ -28,6 +28,30 @@ class UserProfileDB(Base):
         nullable=False,
     )    
 
+    study_duration_multiplier: Mapped[float] = mapped_column(
+        Float,
+        default=1.0,
+        nullable=False,
+    )
+
+    personal_duration_multiplier: Mapped[float] = mapped_column(
+        Float,
+        default=1.0,
+        nullable=False,
+    )
+
+    health_duration_multiplier: Mapped[float] = mapped_column(
+        Float,
+        default=1.0,
+        nullable=False,
+    )
+
+    other_duration_multiplier: Mapped[float] = mapped_column(
+        Float,
+        default=1.0,
+        nullable=False,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now,

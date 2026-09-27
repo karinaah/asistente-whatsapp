@@ -50,6 +50,7 @@ class UserProfileService:
                 multiplier=multiplier,
             )
         )    
+ 
 
     def update_from_adaptive_profile(
         self,
@@ -59,15 +60,33 @@ class UserProfileService:
     ) -> UserProfileDB | None:
         return (
             self.repository
-            .update_work_duration_multiplier(
+            .update_duration_multipliers(
                 db,
                 user_id=user_id,
-                multiplier=(
+                work_multiplier=(
                     adaptive_profile
                     .work_duration_multiplier
                 ),
+                study_multiplier=(
+                    adaptive_profile
+                    .study_duration_multiplier
+                ),
+                personal_multiplier=(
+                    adaptive_profile
+                    .personal_duration_multiplier
+                ),
+                health_multiplier=(
+                    adaptive_profile
+                    .health_duration_multiplier
+                ),
+                other_multiplier=(
+                    adaptive_profile
+                    .other_duration_multiplier
+                ),
             )
-        )    
+        )
+
+ 
 
     def build_adaptive_profile(
         self,
@@ -82,9 +101,22 @@ class UserProfileService:
         if profile is None:
             return None
 
+
         return AdaptiveProfile(
             generated_from_executions=0,
             work_duration_multiplier=(
                 profile.work_duration_multiplier
             ),
-        )    
+            study_duration_multiplier=(
+                profile.study_duration_multiplier
+            ),
+            personal_duration_multiplier=(
+                profile.personal_duration_multiplier
+            ),
+            health_duration_multiplier=(
+                profile.health_duration_multiplier
+            ),
+            other_duration_multiplier=(
+                profile.other_duration_multiplier
+            ),
+        )
