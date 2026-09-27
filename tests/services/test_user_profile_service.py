@@ -504,3 +504,99 @@ def test_user_profile_service_rebuilds_all_duration_multipliers():
 
     finally:
         db.close()             
+
+def test_user_profile_service_persists_low_energy_preference():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Low Energy User",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = UserProfileService(
+            repository=UserProfileRepository()
+        )
+
+        service.create_profile(
+            db,
+            user_id=user.id,
+        )
+
+        adaptive_profile = AdaptiveProfile(
+            generated_from_executions=5,
+            prefers_short_tasks_when_low_energy=True,
+        )
+
+        service.update_from_adaptive_profile(
+            db,
+            user_id=user.id,
+            adaptive_profile=adaptive_profile,
+        )
+
+        stored_profile = service.get_profile(
+            db,
+            user_id=user.id,
+        )
+
+        assert stored_profile is not None
+        assert (
+            stored_profile
+            .prefers_short_tasks_when_low_energy
+            is True
+        )
+
+    finally:
+        db.close()   
+
+def test_user_profile_service_rebuilds_low_energy_preference():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Low Energy Rebuild User",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = UserProfileService(
+            repository=UserProfileRepository()
+        )
+
+        service.create_profile(
+            db,
+            user_id=user.id,
+        )
+
+        adaptive_profile = AdaptiveProfile(
+            generated_from_executions=5,
+            prefers_short_tasks_when_low_energy=True,
+        )
+
+        service.update_from_adaptive_profile(
+            db,
+            user_id=user.id,
+            adaptive_profile=adaptive_profile,
+        )
+
+        rebuilt_profile = (
+            service.build_adaptive_profile(
+                db,
+                user_id=user.id,
+            )
+        )
+
+        assert rebuilt_profile is not None
+        assert (
+            rebuilt_profile
+            .prefers_short_tasks_when_low_energy
+            is True
+        )
+
+    finally:
+        db.close()             

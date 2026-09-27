@@ -83,6 +83,11 @@ class UserProfileService:
                     adaptive_profile
                     .other_duration_multiplier
                 ),
+                prefers_short_tasks_when_low_energy=(
+                    adaptive_profile
+                    .prefers_short_tasks_when_low_energy
+                ),
+
             )
         )
 
@@ -119,4 +124,8 @@ class UserProfileService:
             other_duration_multiplier=(
                 profile.other_duration_multiplier
             ),
+            prefers_short_tasks_when_low_energy=(
+                profile.prefers_short_tasks_when_low_energy
+            ),
+
         )

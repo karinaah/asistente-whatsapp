@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -49,6 +49,12 @@ class UserProfileDB(Base):
     other_duration_multiplier: Mapped[float] = mapped_column(
         Float,
         default=1.0,
+        nullable=False,
+    )
+
+    prefers_short_tasks_when_low_energy: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
         nullable=False,
     )
 

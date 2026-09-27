@@ -62,6 +62,7 @@ class UserProfileRepository:
         personal_multiplier: float,
         health_multiplier: float,
         other_multiplier: float,
+        prefers_short_tasks_when_low_energy: bool,
     ) -> UserProfileDB | None:
         profile = self.get_by_user_id(
             db,
@@ -86,6 +87,9 @@ class UserProfileRepository:
         profile.other_duration_multiplier = (
             other_multiplier
         )
+        profile.prefers_short_tasks_when_low_energy = (
+            prefers_short_tasks_when_low_energy
+        )        
 
         db.commit()
         db.refresh(profile)

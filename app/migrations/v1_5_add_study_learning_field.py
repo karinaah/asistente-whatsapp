@@ -75,6 +75,19 @@ def run_migration() -> None:
                 """
             )
 
+        if not column_exists(
+            conn,
+            "user_profiles",
+            "prefers_short_tasks_when_low_energy",
+        ):
+            conn.execute(
+                """
+                ALTER TABLE user_profiles
+                ADD COLUMN prefers_short_tasks_when_low_energy INTEGER
+                NOT NULL DEFAULT 0
+                """
+            )
+
         conn.commit()
 
     finally:
