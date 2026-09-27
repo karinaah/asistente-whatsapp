@@ -599,4 +599,53 @@ def test_user_profile_service_rebuilds_low_energy_preference():
         )
 
     finally:
-        db.close()             
+        db.close()  
+
+def test_user_profile_service_persists_learning_confidence():
+    db = create_test_db()
+
+    try:
+        user = UserDB(
+            name="Confidence User",
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = UserProfileService(
+            repository=UserProfileRepository()
+        )
+
+        service.create_profile(
+            db,
+            user_id=user.id,
+        )
+
+        adaptive_profile = AdaptiveProfile(
+            generated_from_executions=10,
+            confidence=0.5,
+        )
+
+        service.update_from_adaptive_profile(
+            db,
+            user_id=user.id,
+            adaptive_profile=adaptive_profile,
+        )
+
+        rebuilt_profile = (
+            service.build_adaptive_profile(
+                db,
+                user_id=user.id,
+            )
+        )
+
+        assert rebuilt_profile is not None
+        assert (
+            rebuilt_profile.generated_from_executions
+            == 10
+        )
+        assert rebuilt_profile.confidence == 0.5
+
+    finally:
+        db.close()                   

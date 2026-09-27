@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
 
+from app.models.adaptive_profile import AdaptiveProfile
 from app.models.user_profile_db import UserProfileDB
 from app.repositories.user_profile_repository import (
     UserProfileRepository,
 )
-from app.models.adaptive_profile import AdaptiveProfile
+
 
 class UserProfileService:
     def __init__(
@@ -49,8 +50,7 @@ class UserProfileService:
                 user_id=user_id,
                 multiplier=multiplier,
             )
-        )    
- 
+        )
 
     def update_from_adaptive_profile(
         self,
@@ -87,11 +87,15 @@ class UserProfileService:
                     adaptive_profile
                     .prefers_short_tasks_when_low_energy
                 ),
-
+                generated_from_executions=(
+                    adaptive_profile
+                    .generated_from_executions
+                ),
+                confidence=(
+                    adaptive_profile.confidence
+                ),
             )
         )
-
- 
 
     def build_adaptive_profile(
         self,
@@ -106,9 +110,10 @@ class UserProfileService:
         if profile is None:
             return None
 
-
         return AdaptiveProfile(
-            generated_from_executions=0,
+            generated_from_executions=(
+                profile.generated_from_executions
+            ),
             work_duration_multiplier=(
                 profile.work_duration_multiplier
             ),
@@ -125,7 +130,10 @@ class UserProfileService:
                 profile.other_duration_multiplier
             ),
             prefers_short_tasks_when_low_energy=(
-                profile.prefers_short_tasks_when_low_energy
+                profile
+                .prefers_short_tasks_when_low_energy
             ),
-
+            confidence=(
+                profile.confidence
+            ),
         )

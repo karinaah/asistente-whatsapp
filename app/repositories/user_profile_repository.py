@@ -63,6 +63,8 @@ class UserProfileRepository:
         health_multiplier: float,
         other_multiplier: float,
         prefers_short_tasks_when_low_energy: bool,
+        generated_from_executions: int,
+        confidence: float,
     ) -> UserProfileDB | None:
         profile = self.get_by_user_id(
             db,
@@ -90,6 +92,10 @@ class UserProfileRepository:
         profile.prefers_short_tasks_when_low_energy = (
             prefers_short_tasks_when_low_energy
         )        
+        profile.generated_from_executions = (
+            generated_from_executions
+        )
+        profile.confidence = confidence
 
         db.commit()
         db.refresh(profile)
