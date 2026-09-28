@@ -1,7 +1,7 @@
 from app.integrations.google_calendar import (
     GoogleCalendarAdapter,
 )
-
+from datetime import datetime
 
 def test_parses_google_calendar_timed_event():
     adapter = GoogleCalendarAdapter()
@@ -98,3 +98,37 @@ def test_parses_multiple_google_calendar_events():
     assert len(events) == 2
     assert events[0].title == "Reunión"
     assert events[1].title == "Dentista"
+
+def test_parse_event_normalizes_datetime_to_naive_local_time():
+    adapter = GoogleCalendarAdapter()
+
+    google_event = {
+        "id": "event-1",
+        "summary": "Reunión",
+        "start": {
+            "dateTime": "2026-09-28T10:00:00-03:00",
+        },
+        "end": {
+            "dateTime": "2026-09-28T11:00:00-03:00",
+        },
+    }
+
+    event = adapter.parse_event(google_event)
+
+    assert event.start_time == datetime(
+        2026,
+        9,
+        28,
+        10,
+        0,
+    )
+    assert event.end_time == datetime(
+        2026,
+        9,
+        28,
+        11,
+        0,
+    )
+
+    assert event.start_time.tzinfo is None
+    assert event.end_time.tzinfo is None    

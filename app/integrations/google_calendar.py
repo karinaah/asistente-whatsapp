@@ -23,14 +23,15 @@ class GoogleCalendarAdapter:
             end_time = datetime.fromisoformat(
                 end["date"]
             )
+
         else:
             start_time = datetime.fromisoformat(
                 start["dateTime"]
-            )
+            ).replace(tzinfo=None)
+
             end_time = datetime.fromisoformat(
                 end["dateTime"]
-            )
-
+            ).replace(tzinfo=None)
         return CalendarEvent(
             external_id=google_event.get("id"),
             title=google_event.get(

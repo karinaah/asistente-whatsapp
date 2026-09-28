@@ -19,6 +19,7 @@ from app.services.routine_occurrence_service import (
 from app.services.recurring_availability_service import (
     RecurringAvailabilityService,
 )
+from app.services.calendar_service import CalendarService
 class PlanningWorkflowService:
     def __init__(self) -> None:
         self.task_service = TaskService()
@@ -32,7 +33,7 @@ class PlanningWorkflowService:
         self.recurring_availability_service = (
             RecurringAvailabilityService()
         )
-
+        self.calendar_service = CalendarService()
     def generate_routines_for_plan(
         self,
         db: Session,
@@ -137,7 +138,15 @@ class PlanningWorkflowService:
             busy_blocks.extend(
                 availability_blocks
             )
+            calendar_blocks = (
+                self.calendar_service.get_busy_blocks(
+                    target_date=request.plan_date,
+                )
+            )
 
+            busy_blocks.extend(
+                calendar_blocks
+            )
         return PlanningRequest(
             tasks=tasks,
             plan_date=request.plan_date,

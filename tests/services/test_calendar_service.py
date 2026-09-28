@@ -164,3 +164,80 @@ def test_calendar_event_blocks_planner_time():
         11,
         15,
     )    
+
+def test_get_busy_blocks_fetches_events_for_target_date():
+    from datetime import date
+    from unittest.mock import MagicMock
+
+    from app.models.calendar_event import CalendarEvent
+
+    calendar_client = MagicMock()
+
+    calendar_client.get_events.return_value = [
+        CalendarEvent(
+            external_id="event-1",
+            title="Vacuna",
+            start_time=datetime(
+                2026,
+                9,
+                28,
+                8,
+                0,
+            ),
+            end_time=datetime(
+                2026,
+                9,
+                28,
+                9,
+                0,
+            ),
+        )
+    ]
+
+    service = CalendarService(
+        calendar_client=calendar_client
+    )
+
+    blocks = service.get_busy_blocks(
+        date(2026, 9, 28)
+    )
+
+    assert len(blocks) == 1
+
+    block = blocks[0]
+
+    assert block.start_time == datetime(
+        2026,
+        9,
+        28,
+        8,
+        0,
+    )
+    assert block.end_time == datetime(
+        2026,
+        9,
+        28,
+        9,
+        0,
+    )
+    assert block.title == "Vacuna"
+    assert block.block_type == BlockType.EVENT
+
+    calendar_client.get_events.assert_called_once_with(
+        start_time=datetime(
+            2026,
+            9,
+            28,
+            0,
+            0,
+        ),
+        end_time=datetime(
+            2026,
+            9,
+            28,
+            23,
+            59,
+            59,
+            999999,
+        ),
+    )    

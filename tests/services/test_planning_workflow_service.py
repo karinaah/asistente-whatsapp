@@ -12,7 +12,17 @@ from app.models.time_block import (
     BlockType,
     TimeBlock,
 )
+import pytest
 
+@pytest.fixture(autouse=True)
+def disable_real_calendar_calls(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "app.services.calendar_service."
+        "CalendarService.get_busy_blocks",
+        lambda self, target_date: [],
+    )
 def test_create_plan_from_db_uses_plannable_tasks(
     monkeypatch,
 ):
@@ -887,3 +897,124 @@ def test_create_plan_respects_gap_between_availability_intervals(
         15,
         0,
     )    
+
+def test_build_planning_request_includes_calendar_blocks(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    task = Task(
+        title="Preparar informe",
+        estimated_minutes=60,
+    )
+
+    manual_block = TimeBlock(
+        start_time=datetime(
+            2026,
+            9,
+            28,
+            9,
+            0,
+        ),
+        end_time=datetime(
+            2026,
+            9,
+            28,
+            10,
+            0,
+        ),
+        title="Bloque manual",
+        block_type=BlockType.EVENT,
+    )
+
+    availability_block = TimeBlock(
+        start_time=datetime(
+            2026,
+            9,
+            28,
+            13,
+            0,
+        ),
+        end_time=datetime(
+            2026,
+            9,
+            28,
+            14,
+            0,
+        ),
+        title="No disponible",
+        block_type=BlockType.BREAK,
+    )
+
+    calendar_block = TimeBlock(
+        start_time=datetime(
+            2026,
+            9,
+            28,
+            16,
+            0,
+        ),
+        end_time=datetime(
+            2026,
+            9,
+            28,
+            17,
+            0,
+        ),
+        title="Evento Google",
+        block_type=BlockType.EVENT,
+    )
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "resolve_day_hours",
+        lambda db,
+        user_id,
+        target_date,
+        fallback_start_hour,
+        fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+
+    monkeypatch.setattr(
+        service.recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [
+            availability_block
+        ],
+    )
+
+    monkeypatch.setattr(
+        service.calendar_service,
+        "get_busy_blocks",
+        lambda target_date: [
+            calendar_block
+        ],
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 9, 28),
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[
+            manual_block
+        ],
+    )
+
+    planning_request = (
+        service.build_planning_request(
+            db=None,
+            tasks=[task],
+            request=request,
+            user_id=123,
+        )
+    )
+
+    assert planning_request.busy_blocks == [
+        manual_block,
+        availability_block,
+        calendar_block,
+    ]    
