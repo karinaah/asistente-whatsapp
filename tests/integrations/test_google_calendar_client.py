@@ -145,3 +145,84 @@ def test_get_events_adds_timezone_to_naive_query_datetimes():
         ).tzinfo
         is not None
     )    
+
+def test_get_events_fetches_all_pages():
+    auth_service = MagicMock()
+    auth_service.get_credentials.return_value = MagicMock()
+
+    first_request = MagicMock()
+    first_request.execute.return_value = {
+        "items": [
+            {
+                "id": "event-1",
+                "summary": "Primera reunión",
+                "start": {
+                    "dateTime": "2026-09-28T10:00:00-03:00",
+                },
+                "end": {
+                    "dateTime": "2026-09-28T11:00:00-03:00",
+                },
+            }
+        ],
+        "nextPageToken": "page-2",
+    }
+
+    second_request = MagicMock()
+    second_request.execute.return_value = {
+        "items": [
+            {
+                "id": "event-2",
+                "summary": "Segunda reunión",
+                "start": {
+                    "dateTime": "2026-09-28T14:00:00-03:00",
+                },
+                "end": {
+                    "dateTime": "2026-09-28T15:00:00-03:00",
+                },
+            }
+        ]
+    }
+
+    events_resource = MagicMock()
+    events_resource.list.side_effect = [
+        first_request,
+        second_request,
+    ]
+
+    google_service = MagicMock()
+    google_service.events.return_value = events_resource
+
+    start_time = datetime.fromisoformat(
+        "2026-09-28T00:00:00-03:00"
+    )
+    end_time = datetime.fromisoformat(
+        "2026-09-29T00:00:00-03:00"
+    )
+
+    with patch(
+        "app.integrations.google_calendar_client.build",
+        return_value=google_service,
+    ):
+        client = GoogleCalendarClient(
+            auth_service=auth_service
+        )
+
+        events = client.get_events(
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+    assert len(events) == 2
+    assert events[0].external_id == "event-1"
+    assert events[1].external_id == "event-2"
+
+    assert events_resource.list.call_count == 2
+
+    second_call_kwargs = (
+        events_resource.list.call_args_list[1].kwargs
+    )
+
+    assert (
+        second_call_kwargs["pageToken"]
+        == "page-2"
+    )    

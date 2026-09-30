@@ -58,22 +58,40 @@ class GoogleCalendarClient:
             credentials=credentials,
         )
 
-        response = (
-            service.events()
-            .list(
-                calendarId=calendar_id,
-                timeMin=start_time.isoformat(),
-                timeMax=end_time.isoformat(),
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            .execute()
-        )
+        google_events = []
+        page_token = None
 
-        google_events = response.get(
-            "items",
-            [],
-        )
+        while True:
+            list_kwargs = {
+                "calendarId": calendar_id,
+                "timeMin": start_time.isoformat(),
+                "timeMax": end_time.isoformat(),
+                "singleEvents": True,
+                "orderBy": "startTime",
+            }
+
+            if page_token is not None:
+                list_kwargs["pageToken"] = page_token
+
+            response = (
+                service.events()
+                .list(**list_kwargs)
+                .execute()
+            )
+
+            google_events.extend(
+                response.get(
+                    "items",
+                    [],
+                )
+            )
+
+            page_token = response.get(
+                "nextPageToken"
+            )
+
+            if page_token is None:
+                break
 
         return self.adapter.parse_events(
             google_events
