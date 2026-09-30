@@ -7,6 +7,7 @@ from app.services.calendar_service import CalendarService
 from app.models.schedule import PlanningRequest
 from app.models.task import Task
 from app.services.planner_service import PlannerService
+from unittest.mock import MagicMock
 def test_converts_calendar_event_to_time_block():
     service = CalendarService()
 
@@ -241,3 +242,20 @@ def test_get_busy_blocks_fetches_events_for_target_date():
             999999,
         ),
     )    
+
+def test_get_busy_blocks_returns_empty_list_when_calendar_fails():
+    calendar_client = MagicMock()
+
+    calendar_client.get_events.side_effect = (
+        RuntimeError("Google Calendar unavailable")
+    )
+
+    service = CalendarService(
+        calendar_client=calendar_client
+    )
+
+    blocks = service.get_busy_blocks(
+        date(2026, 9, 28)
+    )
+
+    assert blocks == []    

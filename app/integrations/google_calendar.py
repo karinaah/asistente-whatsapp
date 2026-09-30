@@ -34,10 +34,7 @@ class GoogleCalendarAdapter:
             ).replace(tzinfo=None)
         return CalendarEvent(
             external_id=google_event.get("id"),
-            title=google_event.get(
-                "summary",
-                "Evento",
-            ),
+            title=google_event.get("summary") or "Evento",
             start_time=start_time,
             end_time=end_time,
             all_day=all_day,
@@ -47,7 +44,15 @@ class GoogleCalendarAdapter:
         self,
         google_events: list[dict],
     ) -> list[CalendarEvent]:
+        blocking_events = [
+            event
+            for event in google_events
+            if event.get("status") != "cancelled"
+            and event.get("transparency") != "transparent"
+            and "dateTime" in event.get("start", {})
+        ]
+
         return [
             self.parse_event(event)
-            for event in google_events
+            for event in blocking_events
         ]

@@ -50,10 +50,15 @@ class CalendarService:
             time.max,
         )
 
-        events = self.calendar_client.get_events(
-            start_time=start_time,
-            end_time=end_time,
-        )
+
+
+        try:
+            events = self.calendar_client.get_events(
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except Exception:
+            return []
 
         return self.events_to_time_blocks(
             events
