@@ -323,3 +323,350 @@ def test_web_notification_disappears_after_marking_as_read():
         "Notificación para cerrar"
         not in response.text
     )    
+
+def test_web_routines_shows_only_current_user_routines():
+    client.cookies.clear()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.routine import (
+        Routine,
+        Weekday,
+    )
+    from app.services.routine_service import (
+        RoutineService,
+    )
+    from app.services.user_service import UserService
+
+    db = SessionLocal()
+
+    try:
+        routine_service = RoutineService()
+        local_user_service = UserService()
+
+        other_user = local_user_service.create_user(
+            db
+        )
+
+        routine_service.create(
+            db,
+            Routine(
+                user_id=int(user_id),
+                title="Rutina visible v18",
+                weekdays=[
+                    Weekday.monday,
+                    Weekday.wednesday,
+                ],
+                estimated_minutes=30,
+            ),
+        )
+
+        routine_service.create(
+            db,
+            Routine(
+                user_id=other_user.id,
+                title="Rutina privada v18",
+                weekdays=[
+                    Weekday.tuesday,
+                ],
+                estimated_minutes=45,
+            ),
+        )
+
+    finally:
+        db.close()
+
+    response = client.get("/web/routines")
+
+    assert response.status_code == 200
+    assert "Rutina visible v18" in response.text
+    assert "Rutina privada v18" not in response.text    
+
+def test_web_can_create_routine():
+    client.cookies.clear()
+
+    response = client.get("/web/routines")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    response = client.post(
+        "/web/routines/create",
+        data={
+            "title": "Yoga mañana v18",
+            "weekdays": ["0", "2", "4"],
+            "preferred_start_time": "07:30",
+            "estimated_minutes": "60",
+            "category": "salud",
+            "workspace": "personal",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        response.headers["location"]
+        == "/web/routines"
+    )
+
+    from app.config.database import SessionLocal
+    from app.models.routine_db import RoutineDB
+
+    db = SessionLocal()
+
+    try:
+        routine = (
+            db.query(RoutineDB)
+            .filter(
+                RoutineDB.user_id
+                == int(user_id),
+                RoutineDB.title
+                == "Yoga mañana v18",
+            )
+            .first()
+        )
+
+        assert routine is not None
+        assert routine.estimated_minutes == 60
+        assert routine.weekdays == [0, 2, 4]
+        assert (
+            routine.preferred_start_time.strftime(
+                "%H:%M"
+            )
+            == "07:30"
+        )
+        assert routine.category == "salud"
+        assert routine.workspace == "personal"
+
+    finally:
+        db.close()    
+
+def test_web_can_deactivate_own_routine():
+    client.cookies.clear()
+
+    response = client.get("/web/routines")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.routine import (
+        Routine,
+        Weekday,
+    )
+    from app.models.routine_db import RoutineDB
+    from app.services.routine_service import (
+        RoutineService,
+    )
+
+    db = SessionLocal()
+
+    try:
+        service = RoutineService()
+
+        routine = service.create(
+            db,
+            Routine(
+                user_id=int(user_id),
+                title="Rutina desactivar v18",
+                weekdays=[Weekday.monday],
+                estimated_minutes=30,
+            ),
+        )
+
+        routine_id = routine.id
+
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/web/routines/{routine_id}/deactivate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        response.headers["location"]
+        == "/web/routines"
+    )
+
+    db = SessionLocal()
+
+    try:
+        stored = (
+            db.query(RoutineDB)
+            .filter(
+                RoutineDB.id == routine_id
+            )
+            .first()
+        )
+
+        assert stored is not None
+        assert stored.active is False
+
+    finally:
+        db.close()        
+
+def test_web_cannot_deactivate_other_user_routine():
+    client.cookies.clear()
+
+    response = client.get("/web/routines")
+
+    assert response.status_code == 200
+
+    current_user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert current_user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.routine import (
+        Routine,
+        Weekday,
+    )
+    from app.models.routine_db import RoutineDB
+    from app.services.routine_service import (
+        RoutineService,
+    )
+    from app.services.user_service import UserService
+
+    db = SessionLocal()
+
+    try:
+        service = RoutineService()
+        local_user_service = UserService()
+
+        other_user = local_user_service.create_user(
+            db
+        )
+
+        routine = service.create(
+            db,
+            Routine(
+                user_id=other_user.id,
+                title="Rutina protegida v18",
+                weekdays=[Weekday.tuesday],
+                estimated_minutes=45,
+            ),
+        )
+
+        routine_id = routine.id
+
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/web/routines/{routine_id}/deactivate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    db = SessionLocal()
+
+    try:
+        stored = (
+            db.query(RoutineDB)
+            .filter(
+                RoutineDB.id == routine_id
+            )
+            .first()
+        )
+
+        assert stored is not None
+        assert stored.active is True
+
+    finally:
+        db.close()        
+
+def test_web_can_activate_own_routine():
+    client.cookies.clear()
+
+    response = client.get("/web/routines")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from app.config.database import SessionLocal
+    from app.models.routine import (
+        Routine,
+        Weekday,
+    )
+    from app.models.routine_db import RoutineDB
+    from app.services.routine_service import (
+        RoutineService,
+    )
+
+    db = SessionLocal()
+
+    try:
+        service = RoutineService()
+
+        routine = service.create(
+            db,
+            Routine(
+                user_id=int(user_id),
+                title="Rutina reactivar v18",
+                weekdays=[Weekday.friday],
+                estimated_minutes=30,
+                active=False,
+            ),
+        )
+
+        routine_id = routine.id
+
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/web/routines/{routine_id}/activate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        response.headers["location"]
+        == "/web/routines"
+    )
+
+    db = SessionLocal()
+
+    try:
+        stored = (
+            db.query(RoutineDB)
+            .filter(
+                RoutineDB.id == routine_id
+            )
+            .first()
+        )
+
+        assert stored is not None
+        assert stored.active is True
+
+    finally:
+        db.close()        

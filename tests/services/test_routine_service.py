@@ -147,3 +147,62 @@ def test_routine_service_gets_only_active_routines():
 
     finally:
         db.close()
+
+
+def test_routine_service_sets_active_only_for_owner():
+    db = create_test_db()
+
+    try:
+        owner = UserDB(
+            name="Routine Owner",
+        )
+        other_user = UserDB(
+            name="Other User",
+        )
+
+        db.add_all([
+            owner,
+            other_user,
+        ])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(other_user)
+
+        service = RoutineService()
+
+        routine = service.create(
+            db,
+            Routine(
+                user_id=owner.id,
+                title="Yoga",
+                weekdays=[Weekday.monday],
+                estimated_minutes=60,
+            ),
+        )
+
+        not_updated = service.set_active(
+            db,
+            routine_id=routine.id,
+            user_id=other_user.id,
+            active=False,
+        )
+
+        assert not_updated is None
+
+        db.refresh(routine)
+
+        assert routine.active is True
+
+        updated = service.set_active(
+            db,
+            routine_id=routine.id,
+            user_id=owner.id,
+            active=False,
+        )
+
+        assert updated is not None
+        assert updated.id == routine.id
+        assert updated.active is False
+
+    finally:
+        db.close()        

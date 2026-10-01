@@ -49,3 +49,17 @@ class RoutineService:
                 user_id=user_id,
             )
         )
+
+    def set_active(
+        self,
+        db: Session,
+        routine_id: int,
+        user_id: int,
+        active: bool,
+    ) -> RoutineDB | None:
+        return self.repository.set_active(
+            db,
+            routine_id=routine_id,
+            user_id=user_id,
+            active=active,
+        )    

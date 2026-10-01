@@ -67,3 +67,29 @@ class RoutineRepository:
             .order_by(RoutineDB.id)
             .all()
         )
+
+    def set_active(
+        self,
+        db: Session,
+        routine_id: int,
+        user_id: int,
+        active: bool,
+    ) -> RoutineDB | None:
+        routine = (
+            db.query(RoutineDB)
+            .filter(
+                RoutineDB.id == routine_id,
+                RoutineDB.user_id == user_id,
+            )
+            .first()
+        )
+
+        if routine is None:
+            return None
+
+        routine.active = active
+
+        db.commit()
+        db.refresh(routine)
+
+        return routine    

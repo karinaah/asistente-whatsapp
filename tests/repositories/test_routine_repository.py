@@ -301,3 +301,61 @@ def test_task_repository_finds_existing_routine_occurrence():
 
     finally:
         db.close()        
+
+def test_set_routine_active_only_for_owner():
+    db = create_test_db()
+
+    try:
+        owner = UserDB(
+            name="Routine Owner",
+        )
+        other_user = UserDB(
+            name="Other User",
+        )
+
+        db.add_all([
+            owner,
+            other_user,
+        ])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(other_user)
+
+        repository = RoutineRepository()
+
+        routine = repository.create(
+            db,
+            Routine(
+                user_id=owner.id,
+                title="Yoga",
+                weekdays=[Weekday.monday],
+                estimated_minutes=60,
+            ),
+        )
+
+        not_updated = repository.set_active(
+            db,
+            routine_id=routine.id,
+            user_id=other_user.id,
+            active=False,
+        )
+
+        assert not_updated is None
+
+        db.refresh(routine)
+
+        assert routine.active is True
+
+        updated = repository.set_active(
+            db,
+            routine_id=routine.id,
+            user_id=owner.id,
+            active=False,
+        )
+
+        assert updated is not None
+        assert updated.id == routine.id
+        assert updated.active is False
+
+    finally:
+        db.close()        

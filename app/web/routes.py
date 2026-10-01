@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from uuid import uuid4
 
 
@@ -22,13 +22,15 @@ from app.models.assistant_chat import AssistantChatRequest
 from app.services.assistant_chat_service import AssistantChatService
 from app.services.user_service import UserService
 from app.services.notification_service import NotificationService
-
+from app.services.routine_service import RoutineService
+from app.models.routine import Routine, Weekday
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
 assistant_chat_service = AssistantChatService()
 user_service = UserService()
 notification_service = NotificationService()
+routine_service = RoutineService()
 
 @router.get("/web")
 def home(
@@ -201,6 +203,149 @@ def edit_task_from_web(
 
     return RedirectResponse(
         url="/web/tasks",
+        status_code=303,
+    )
+
+@router.get("/web/routines")
+def routines_page(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
+    routines = routine_service.get_for_user(
+        db=db,
+        user_id=int(user_id),
+    )
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="routines.html",
+        context={
+            "routines": routines,
+        },
+    )
+
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
+
+@router.post("/web/routines/create")
+def create_routine_from_web(
+    request: Request,
+    title: str = Form(...),
+    weekdays: list[int] = Form(...),
+    preferred_start_time: str = Form(""),
+    estimated_minutes: int = Form(...),
+    category: str = Form("otro"),
+    workspace: str = Form("personal"),
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
+    parsed_start_time = None
+
+    if preferred_start_time:
+        hour, minute = preferred_start_time.split(":")
+
+        parsed_start_time = time(
+            hour=int(hour),
+            minute=int(minute),
+        )
+
+    routine = Routine(
+        user_id=int(user_id),
+        title=title,
+        weekdays=[
+            Weekday(weekday)
+            for weekday in weekdays
+        ],
+        preferred_start_time=parsed_start_time,
+        estimated_minutes=estimated_minutes,
+        category=category,
+        workspace=workspace,
+    )
+
+    routine_service.create(
+        db=db,
+        routine=routine,
+    )
+
+    return RedirectResponse(
+        url="/web/routines",
+        status_code=303,
+    )
+
+@router.post("/web/routines/{routine_id}/deactivate")
+def deactivate_routine_from_web(
+    routine_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/routines",
+            status_code=303,
+        )
+
+    routine_service.set_active(
+        db=db,
+        routine_id=routine_id,
+        user_id=int(user_id),
+        active=False,
+    )
+
+    return RedirectResponse(
+        url="/web/routines",
+        status_code=303,
+    )
+
+@router.post("/web/routines/{routine_id}/activate")
+def activate_routine_from_web(
+    routine_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/routines",
+            status_code=303,
+        )
+
+    routine_service.set_active(
+        db=db,
+        routine_id=routine_id,
+        user_id=int(user_id),
+        active=True,
+    )
+
+    return RedirectResponse(
+        url="/web/routines",
         status_code=303,
     )
 

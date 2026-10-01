@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rutinas - AURA</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <nav>
+            <a href="/web">Hoy</a>
+            |
+            <a href="/web/tasks">Tareas</a>
+            |
+            <a href="/web/routines">Rutinas</a>
+            |
+            <a href="/web/chat">Chat</a>
+        </nav>
+
+        <h1>Rutinas</h1>
+
+        <p>Total de rutinas: {{ routines | length }}</p>
+
+        <h2>Nueva rutina</h2>
+
+        <form
+            method="post"
+            action="/web/routines/create"
+            class="task-form"
+        >
+            <div class="form-group">
+                <label for="title">Rutina</label>
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label>Días</label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="0">
+                    Lunes
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="1">
+                    Martes
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="2">
+                    Miércoles
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="3">
+                    Jueves
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="4">
+                    Viernes
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="5">
+                    Sábado
+                </label>
+
+                <label>
+                    <input type="checkbox" name="weekdays" value="6">
+                    Domingo
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_start_time">
+                    Hora preferida
+                </label>
+
+                <input
+                    type="time"
+                    id="preferred_start_time"
+                    name="preferred_start_time"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="estimated_minutes">
+                    Duración estimada (minutos)
+                </label>
+
+                <input
+                    type="number"
+                    id="estimated_minutes"
+                    name="estimated_minutes"
+                    min="1"
+                    max="1440"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="category">Categoría</label>
+
+                <select id="category" name="category">
+                    <option value="trabajo">Trabajo</option>
+                    <option value="estudio">Estudio</option>
+                    <option value="personal">Personal</option>
+                    <option value="salud">Salud</option>
+                    <option value="tramites">Trámites</option>
+                    <option value="otro" selected>Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="workspace">Workspace</label>
+
+                <select id="workspace" name="workspace">
+                    <option value="personal" selected>
+                        Personal
+                    </option>
+                    <option value="trabajo">
+                        Trabajo
+                    </option>
+                </select>
+            </div>
+
+            <button
+                type="submit"
+                class="create-button"
+            >
+                Crear rutina
+            </button>
+        </form>
+
+
+        {% for routine in routines %}
+            <div class="task-card">
+
+                <div class="task-title">
+                    {{ routine.title }}
+                </div>
+
+                <p class="task-meta">
+                    Duración: {{ routine.estimated_minutes }} min
+                    |
+                    Estado:
+                    {% if routine.active %}
+                        Activa
+                    {% else %}
+                        Inactiva
+                    {% endif %}
+                </p>
+
+                {% if routine.active %}
+                    <form
+                        method="post"
+                        action="/web/routines/{{ routine.id }}/deactivate"
+                    >
+                        <button type="submit">
+                            Desactivar
+                        </button>
+                    </form>
+                {% else %}
+                    <form
+                        method="post"
+                        action="/web/routines/{{ routine.id }}/activate"
+                    >
+                        <button type="submit">
+                            Activar
+                        </button>
+                    </form>
+                {% endif %}
+
+            </div>
+        {% else %}
+            <p class="empty-state">
+                Aún no tienes rutinas.
+            </p>
+        {% endfor %}
+
+    </div>
+</body>
+</html>
