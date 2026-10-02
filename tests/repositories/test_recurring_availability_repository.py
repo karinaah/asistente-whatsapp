@@ -118,3 +118,61 @@ def test_repository_isolates_availability_by_user():
 
     finally:
         db.close()        
+
+def test_set_availability_active_only_for_owner():
+    db = create_test_db()
+
+    try:
+        owner = UserDB(
+            name="Availability Owner",
+        )
+        other_user = UserDB(
+            name="Other User",
+        )
+
+        db.add_all([
+            owner,
+            other_user,
+        ])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(other_user)
+
+        repository = RecurringAvailabilityRepository()
+
+        availability = repository.create(
+            db,
+            RecurringAvailability(
+                user_id=owner.id,
+                weekday=Weekday.monday,
+                start_time=time(8, 0),
+                end_time=time(18, 0),
+            ),
+        )
+
+        not_updated = repository.set_active(
+            db,
+            availability_id=availability.id,
+            user_id=other_user.id,
+            active=False,
+        )
+
+        assert not_updated is None
+
+        db.refresh(availability)
+
+        assert availability.active is True
+
+        updated = repository.set_active(
+            db,
+            availability_id=availability.id,
+            user_id=owner.id,
+            active=False,
+        )
+
+        assert updated is not None
+        assert updated.id == availability.id
+        assert updated.active is False
+
+    finally:
+        db.close()   

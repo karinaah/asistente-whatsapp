@@ -670,3 +670,138 @@ def test_web_can_activate_own_routine():
 
     finally:
         db.close()        
+
+def test_web_availability_shows_only_current_user_availability():
+    client.cookies.clear()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    from datetime import time
+
+    from app.config.database import SessionLocal
+    from app.models.recurring_availability import (
+        RecurringAvailability,
+    )
+    from app.models.routine import Weekday
+    from app.services.recurring_availability_service import (
+        RecurringAvailabilityService,
+    )
+    from app.services.user_service import UserService
+
+    db = SessionLocal()
+
+    try:
+        availability_service = (
+            RecurringAvailabilityService()
+        )
+        local_user_service = UserService()
+
+        other_user = local_user_service.create_user(
+            db
+        )
+
+        availability_service.create(
+            db,
+            RecurringAvailability(
+                user_id=int(user_id),
+                weekday=Weekday.monday,
+                start_time=time(8, 0),
+                end_time=time(18, 0),
+            ),
+        )
+
+        availability_service.create(
+            db,
+            RecurringAvailability(
+                user_id=other_user.id,
+                weekday=Weekday.tuesday,
+                start_time=time(10, 0),
+                end_time=time(20, 0),
+            ),
+        )
+
+    finally:
+        db.close()
+
+    response = client.get(
+        "/web/availability"
+    )
+
+    assert response.status_code == 200
+
+    assert "08:00" in response.text
+    assert "18:00" in response.text
+
+    assert "10:00" not in response.text
+    assert "20:00" not in response.text        
+
+def test_web_can_create_availability():
+    client.cookies.clear()
+
+    response = client.get(
+        "/web/availability"
+    )
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+
+    response = client.post(
+        "/web/availability/create",
+        data={
+            "weekday": "0",
+            "start_time": "08:30",
+            "end_time": "17:30",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        response.headers["location"]
+        == "/web/availability"
+    )
+
+    from datetime import time
+
+    from app.config.database import SessionLocal
+    from app.models.recurring_availability_db import (
+        RecurringAvailabilityDB,
+    )
+
+    db = SessionLocal()
+
+    try:
+        stored = (
+            db.query(RecurringAvailabilityDB)
+            .filter(
+                RecurringAvailabilityDB.user_id
+                == int(user_id),
+                RecurringAvailabilityDB.weekday
+                == 0,
+            )
+            .order_by(
+                RecurringAvailabilityDB.id.desc()
+            )
+            .first()
+        )
+
+        assert stored is not None
+        assert stored.start_time == time(8, 30)
+        assert stored.end_time == time(17, 30)
+        assert stored.active is True
+
+    finally:
+        db.close()    

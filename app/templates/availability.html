@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disponibilidad - AURA</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+
+        <nav>
+            <a href="/web">Hoy</a>
+            |
+            <a href="/web/tasks">Tareas</a>
+            |
+            <a href="/web/routines">Rutinas</a>
+            |
+            <a href="/web/availability">Disponibilidad</a>
+            |
+            <a href="/web/chat">Chat</a>
+        </nav>
+
+        <h1>Disponibilidad</h1>
+
+        <p>
+            Define los horarios en los que AURA puede planificar tus tareas.
+        </p>
+
+        <p>
+            Total de rangos:
+            {{ availabilities | length }}
+        </p>
+
+        <h2>Nuevo rango</h2>
+
+        <form
+            method="post"
+            action="/web/availability/create"
+            class="task-form"
+        >
+            <div class="form-group">
+                <label for="weekday">Día</label>
+
+                <select
+                    id="weekday"
+                    name="weekday"
+                    required
+                >
+                    <option value="0">Lunes</option>
+                    <option value="1">Martes</option>
+                    <option value="2">Miércoles</option>
+                    <option value="3">Jueves</option>
+                    <option value="4">Viernes</option>
+                    <option value="5">Sábado</option>
+                    <option value="6">Domingo</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="start_time">
+                    Desde
+                </label>
+
+                <input
+                    type="time"
+                    id="start_time"
+                    name="start_time"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="end_time">
+                    Hasta
+                </label>
+
+                <input
+                    type="time"
+                    id="end_time"
+                    name="end_time"
+                    required
+                >
+            </div>
+
+            <button
+                type="submit"
+                class="create-button"
+            >
+                Agregar disponibilidad
+            </button>
+        </form>
+
+
+        <h2>Mis horarios</h2>
+
+        {% for availability in availabilities %}
+            <div class="task-card">
+
+                <div class="task-title">
+                    {% if availability.weekday == 0 %}
+                        Lunes
+                    {% elif availability.weekday == 1 %}
+                        Martes
+                    {% elif availability.weekday == 2 %}
+                        Miércoles
+                    {% elif availability.weekday == 3 %}
+                        Jueves
+                    {% elif availability.weekday == 4 %}
+                        Viernes
+                    {% elif availability.weekday == 5 %}
+                        Sábado
+                    {% elif availability.weekday == 6 %}
+                        Domingo
+                    {% endif %}
+                </div>
+
+                <p class="task-meta">
+                    {{ availability.start_time.strftime("%H:%M") }}
+                    -
+                    {{ availability.end_time.strftime("%H:%M") }}
+
+                    |
+                    Estado:
+                    {% if availability.active %}
+                        Activa
+                    {% else %}
+                        Inactiva
+                    {% endif %}
+                </p>
+
+                {% if availability.active %}
+                    <form
+                        method="post"
+                        action="/web/availability/{{ availability.id }}/deactivate"
+                    >
+                        <button type="submit">
+                            Desactivar
+                        </button>
+                    </form>
+                {% else %}
+                    <form
+                        method="post"
+                        action="/web/availability/{{ availability.id }}/activate"
+                    >
+                        <button type="submit">
+                            Activar
+                        </button>
+                    </form>
+                {% endif %}
+
+            </div>
+        {% else %}
+            <p class="empty-state">
+                Aún no tienes disponibilidad configurada.
+            </p>
+        {% endfor %}
+
+    </div>
+</body>
+</html>

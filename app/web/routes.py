@@ -24,6 +24,12 @@ from app.services.user_service import UserService
 from app.services.notification_service import NotificationService
 from app.services.routine_service import RoutineService
 from app.models.routine import Routine, Weekday
+from app.services.recurring_availability_service import (
+    RecurringAvailabilityService,
+)
+from app.models.recurring_availability import (
+    RecurringAvailability,
+)
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
@@ -31,6 +37,9 @@ assistant_chat_service = AssistantChatService()
 user_service = UserService()
 notification_service = NotificationService()
 routine_service = RoutineService()
+recurring_availability_service = (
+    RecurringAvailabilityService()
+)
 
 @router.get("/web")
 def home(
@@ -445,5 +454,158 @@ def read_notification(
 
     return RedirectResponse(
         url="/web",
+        status_code=303,
+    )
+
+@router.get("/web/availability")
+def availability_page(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
+    availabilities = (
+        recurring_availability_service.get_for_user(
+            db,
+            user_id=int(user_id),
+        )
+    )
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="availability.html",
+        context={
+            "availabilities": availabilities,
+        },
+    )
+
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
+
+@router.post("/web/availability/create")
+def create_availability_from_web(
+    request: Request,
+    weekday: int = Form(...),
+    start_time: str = Form(...),
+    end_time: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
+    start_hour, start_minute = map(
+        int,
+        start_time.split(":"),
+    )
+    end_hour, end_minute = map(
+        int,
+        end_time.split(":"),
+    )
+
+    recurring_availability_service.create(
+        db,
+        RecurringAvailability(
+            user_id=int(user_id),
+            weekday=Weekday(weekday),
+            start_time=time(
+                start_hour,
+                start_minute,
+            ),
+            end_time=time(
+                end_hour,
+                end_minute,
+            ),
+        ),
+    )
+
+    response = RedirectResponse(
+        url="/web/availability",
+        status_code=303,
+    )
+
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
+
+@router.post(
+    "/web/availability/{availability_id}/deactivate"
+)
+def deactivate_availability_from_web(
+    availability_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/availability",
+            status_code=303,
+        )
+
+    recurring_availability_service.set_active(
+        db=db,
+        availability_id=availability_id,
+        user_id=int(user_id),
+        active=False,
+    )
+
+    return RedirectResponse(
+        url="/web/availability",
+        status_code=303,
+    )
+
+
+@router.post(
+    "/web/availability/{availability_id}/activate"
+)
+def activate_availability_from_web(
+    availability_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/availability",
+            status_code=303,
+        )
+
+    recurring_availability_service.set_active(
+        db=db,
+        availability_id=availability_id,
+        user_id=int(user_id),
+        active=True,
+    )
+
+    return RedirectResponse(
+        url="/web/availability",
         status_code=303,
     )

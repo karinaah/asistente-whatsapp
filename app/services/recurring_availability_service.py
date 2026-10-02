@@ -47,6 +47,20 @@ class RecurringAvailabilityService:
             user_id,
         )
 
+    def set_active(
+        self,
+        db: Session,
+        availability_id: int,
+        user_id: int,
+        active: bool,
+    ) -> RecurringAvailabilityDB | None:
+        return self.repository.set_active(
+            db,
+            availability_id=availability_id,
+            user_id=user_id,
+            active=active,
+        )
+
     def get_active_for_date(
         self,
         db: Session,

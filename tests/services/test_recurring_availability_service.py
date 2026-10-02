@@ -223,3 +223,61 @@ def test_build_unavailable_blocks_between_intervals():
 
     finally:
         db.close()               
+
+def test_service_sets_availability_active_only_for_owner():
+    db = create_test_db()
+
+    try:
+        owner = UserDB(
+            name="Availability Owner",
+        )
+        other_user = UserDB(
+            name="Other User",
+        )
+
+        db.add_all([
+            owner,
+            other_user,
+        ])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(other_user)
+
+        service = RecurringAvailabilityService()
+
+        availability = service.create(
+            db,
+            RecurringAvailability(
+                user_id=owner.id,
+                weekday=Weekday.monday,
+                start_time=time(8, 0),
+                end_time=time(18, 0),
+            ),
+        )
+
+        not_updated = service.set_active(
+            db,
+            availability_id=availability.id,
+            user_id=other_user.id,
+            active=False,
+        )
+
+        assert not_updated is None
+
+        db.refresh(availability)
+
+        assert availability.active is True
+
+        updated = service.set_active(
+            db,
+            availability_id=availability.id,
+            user_id=owner.id,
+            active=False,
+        )
+
+        assert updated is not None
+        assert updated.id == availability.id
+        assert updated.active is False
+
+    finally:
+        db.close()        

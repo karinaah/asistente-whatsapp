@@ -66,3 +66,31 @@ class RecurringAvailabilityRepository:
             )
             .all()
         )
+
+    def set_active(
+        self,
+        db: Session,
+        availability_id: int,
+        user_id: int,
+        active: bool,
+    ) -> RecurringAvailabilityDB | None:
+        availability = (
+            db.query(RecurringAvailabilityDB)
+            .filter(
+                RecurringAvailabilityDB.id
+                == availability_id,
+                RecurringAvailabilityDB.user_id
+                == user_id,
+            )
+            .first()
+        )
+
+        if availability is None:
+            return None
+
+        availability.active = active
+
+        db.commit()
+        db.refresh(availability)
+
+        return availability    
