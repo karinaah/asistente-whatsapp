@@ -30,6 +30,10 @@ from app.services.recurring_availability_service import (
 from app.models.recurring_availability import (
     RecurringAvailability,
 )
+from app.repositories.conversation_message_repository import (
+    ConversationMessageRepository,
+)
+
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
@@ -40,6 +44,7 @@ routine_service = RoutineService()
 recurring_availability_service = (
     RecurringAvailabilityService()
 )
+conversation_message_repository = ConversationMessageRepository()
 
 @router.get("/web")
 def home(
@@ -491,10 +496,18 @@ def chat_page(
         user = user_service.create_user(db)
         user_id = str(user.id)
 
+    messages = conversation_message_repository.get_by_session(
+        db=db,
+        session_id=session_id,
+        user_id=int(user_id),
+    )
+
     response = templates.TemplateResponse(
         request=request,
         name="chat.html",
-        context={},
+        context={
+            "messages": messages,
+        },
     )
 
     response.set_cookie(
@@ -540,20 +553,39 @@ def chat_message(
         ),
     )
 
+    conversation_message_repository.add(
+        db=db,
+        session_id=session_id,
+        user_id=(
+            int(user_id)
+            if user_id is not None
+            else None
+        ),
+        role="user",
+        content=message,
+    )
+
     response = assistant_chat_service.chat(
         db=db,
         request=chat_request,
     )
 
-    return templates.TemplateResponse(
-        request=request,
-        name="chat.html",
-        context={
-            "message": message,
-            "answer": response.answer,
-        },
+    conversation_message_repository.add(
+        db=db,
+        session_id=session_id,
+        user_id=(
+            int(user_id)
+            if user_id is not None
+            else None
+        ),
+        role="assistant",
+        content=response.answer,
     )
 
+    return RedirectResponse(
+        url="/web/chat",
+        status_code=303,
+    )
 
 @router.post("/web/notifications/{notification_id}/read")
 def read_notification(

@@ -35,22 +35,28 @@
 
         <div class="chat-messages">
 
-            {% if message %}
-                <div class="chat-message user-message">
-                    <div class="message-author">Tú</div>
-                    <div class="message-content">
-                        {{ message }}
-                    </div>
-                </div>
-            {% endif %}
+            {% if messages %}
 
-            {% if answer %}
-                <div class="chat-message aura-message">
-                    <div class="message-author">AURA</div>
-                    <div class="message-content">
-                        {{ answer }}
-                    </div>
-                </div>
+                {% for chat_message in messages %}
+
+                    {% if chat_message.role == "user" %}
+                        <div class="chat-message user-message">
+                            <div class="message-author">Tú</div>
+                            <div class="message-content">
+                                {{ chat_message.content }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="chat-message aura-message">
+                            <div class="message-author">AURA</div>
+                            <div class="message-content">
+                                {{ chat_message.content }}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                {% endfor %}
+
             {% endif %}
 
         </div>

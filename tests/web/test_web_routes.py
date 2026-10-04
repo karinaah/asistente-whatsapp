@@ -6,7 +6,7 @@ from app.models.task import Task
 from app.models.task_db import TaskDB
 from app.models.user_db import UserDB
 from app.services.task_service import TaskService
-
+from app.models.conversation_message_db import ConversationMessageDB
 
 client = TestClient(app)
 
@@ -992,3 +992,120 @@ def test_web_edit_task_updates_planning_fields():
 
     finally:
         db.close()        
+
+def test_web_chat_persists_user_and_assistant_messages():
+    client.cookies.clear()
+
+    response = client.get("/web/chat")
+
+    assert response.status_code == 200
+
+    session_id = client.cookies.get(
+        "aura_session_id"
+    )
+
+    user_id = int(
+        client.cookies.get(
+            "aura_user_id"
+        )
+    )
+
+    response = client.post(
+        "/web/chat",
+        data={
+            "message": "¿Qué debería hacer ahora?"
+        },
+    )
+
+    assert response.status_code == 200
+
+    db = SessionLocal()
+
+    try:
+        messages = (
+            db.query(ConversationMessageDB)
+            .filter(
+                ConversationMessageDB.session_id
+                == session_id,
+                ConversationMessageDB.user_id
+                == user_id,
+            )
+            .order_by(
+                ConversationMessageDB.id.asc()
+            )
+            .all()
+        )
+
+        assert len(messages) == 2
+
+        assert messages[0].role == "user"
+        assert (
+            messages[0].content
+            == "¿Qué debería hacer ahora?"
+        )
+
+        assert messages[1].role == "assistant"
+        assert messages[1].content
+
+    finally:
+        db.close()      
+
+def test_web_chat_refresh_does_not_duplicate_messages():
+    client.cookies.clear()
+
+    response = client.get("/web/chat")
+
+    assert response.status_code == 200
+
+    session_id = client.cookies.get(
+        "aura_session_id"
+    )
+
+    user_id = int(
+        client.cookies.get(
+            "aura_user_id"
+        )
+    )
+
+    response = client.post(
+        "/web/chat",
+        data={
+            "message": "Mensaje único para refresh"
+        },
+    )
+
+    assert response.status_code == 200
+
+    response = client.get("/web/chat")
+
+    assert response.status_code == 200
+
+    db = SessionLocal()
+
+    try:
+        messages = (
+            db.query(ConversationMessageDB)
+            .filter(
+                ConversationMessageDB.session_id
+                == session_id,
+                ConversationMessageDB.user_id
+                == user_id,
+            )
+            .order_by(
+                ConversationMessageDB.id.asc()
+            )
+            .all()
+        )
+
+        assert len(messages) == 2
+
+        assert messages[0].role == "user"
+        assert (
+            messages[0].content
+            == "Mensaje único para refresh"
+        )
+
+        assert messages[1].role == "assistant"
+
+    finally:
+        db.close()          
