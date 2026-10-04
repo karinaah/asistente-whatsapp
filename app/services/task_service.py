@@ -26,6 +26,22 @@ class TaskService:
             for task_db in tasks_db
         ]
 
+    def get_for_user(
+        self,
+        db: Session,
+        user_id: int,
+    ) -> list[Task]:
+        tasks = self.get_all(db)
+
+        return [
+            task
+            for task in tasks
+            if (
+                task.user_id is None
+                or task.user_id == user_id
+            )
+        ]
+
     def get_by_id(
         self,
         db: Session,
@@ -45,7 +61,23 @@ class TaskService:
         self,
         db: Session,
         task_id: int,
-    ) -> TaskDB:
+        user_id: int | None = None,
+    ) -> TaskDB | None:
+        if user_id is not None:
+            existing_task = self.task_repository.get_by_id(
+                db=db,
+                task_id=task_id,
+            )
+
+            if existing_task is None:
+                raise TaskNotFoundError(task_id)
+
+            if (
+                existing_task.user_id is not None
+                and existing_task.user_id != user_id
+            ):
+                return None
+
         task = self.task_repository.mark_completed(
             db=db,
             task_id=task_id,
@@ -60,7 +92,23 @@ class TaskService:
         self,
         db: Session,
         task_id: int,
-    ) -> None:
+        user_id: int | None = None,
+    ) -> bool:
+        if user_id is not None:
+            existing_task = self.task_repository.get_by_id(
+                db=db,
+                task_id=task_id,
+            )
+
+            if existing_task is None:
+                raise TaskNotFoundError(task_id)
+
+            if (
+                existing_task.user_id is not None
+                and existing_task.user_id != user_id
+            ):
+                return False
+
         deleted = self.task_repository.delete(
             db=db,
             task_id=task_id,
@@ -69,12 +117,29 @@ class TaskService:
         if not deleted:
             raise TaskNotFoundError(task_id)
 
+        return True
+
     def update(
         self,
         db: Session,
         task_id: int,
         request: TaskUpdate,
-    ) -> TaskDB:
+        user_id: int | None = None,
+    ) -> TaskDB | None:
+        if user_id is not None:
+            existing_task = self.task_repository.get_by_id(
+                db=db,
+                task_id=task_id,
+            )
+
+            if existing_task is None:
+                raise TaskNotFoundError(task_id)
+
+            if (
+                existing_task.user_id is not None
+                and existing_task.user_id != user_id
+            ):
+                return None        
         task = self.task_repository.update(
             db=db,
             task_id=task_id,

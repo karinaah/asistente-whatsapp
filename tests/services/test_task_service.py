@@ -82,3 +82,40 @@ def test_get_plannable_filters_tasks_by_user():
 
     finally:
         db.close()
+
+def test_mark_completed_does_not_modify_other_user_task():
+    db = create_test_db()
+
+    try:
+        user_1 = UserDB(name="User 1")
+        user_2 = UserDB(name="User 2")
+
+        db.add_all([user_1, user_2])
+        db.commit()
+        db.refresh(user_1)
+        db.refresh(user_2)
+
+        service = TaskService()
+
+        other_task = service.create(
+            db,
+            Task(
+                user_id=user_2.id,
+                title="Tarea de otro usuario",
+                estimated_minutes=30,
+            ),
+        )
+
+        result = service.mark_completed(
+            db,
+            task_id=other_task.id,
+            user_id=user_1.id,
+        )
+
+        db.refresh(other_task)
+
+        assert result is None
+        assert other_task.status == "pendiente"
+
+    finally:
+        db.close()

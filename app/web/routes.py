@@ -92,12 +92,24 @@ def home(
 @router.post("/web/tasks/{task_id}/complete")
 def complete_task(
     task_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web",
+            status_code=303,
+        )
+
     task_service.mark_completed(
         db=db,
         task_id=task_id,
+        user_id=int(user_id),
     )
 
     return RedirectResponse(
@@ -112,7 +124,18 @@ def tasks_page(
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
-    tasks = task_service.get_all(db)
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
+
+    tasks = task_service.get_for_user(
+        db=db,
+        user_id=int(user_id),
+    )
 
     if workspace in {"trabajo", "personal"}:
         tasks = [
@@ -121,7 +144,7 @@ def tasks_page(
             if task.workspace.value == workspace
         ]
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="tasks.html",
         context={
@@ -130,16 +153,36 @@ def tasks_page(
         },
     )
 
+    response.set_cookie(
+        key="aura_user_id",
+        value=user_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return response
 
 @router.post("/web/tasks/{task_id}/delete")
 def delete_task(
     task_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/tasks",
+            status_code=303,
+        )
+
     task_service.delete(
         db=db,
         task_id=task_id,
+        user_id=int(user_id),
     )
 
     return RedirectResponse(
@@ -150,6 +193,7 @@ def delete_task(
 
 @router.post("/web/tasks/create")
 def create_task_from_web(
+    request: Request,
     title: str = Form(...),
     estimated_minutes: int = Form(...),
     priority: str = Form("media"),
@@ -159,9 +203,23 @@ def create_task_from_web(
     flexibility: str = Form("flexible"),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    description: str = Form(""),
+    effort: str = Form("medio"),
+    focus_demand: str = Form("medio"),
+    preferred_date: str = Form(""),
+    preferred_time_of_day: str = Form(""),
+    preferred_start_time: str = Form(""),
 ):
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        user = user_service.create_user(db)
+        user_id = str(user.id)
 
     task = Task(
+        user_id=int(user_id),
         title=title,
         estimated_minutes=estimated_minutes,
         priority=priority,
@@ -169,6 +227,24 @@ def create_task_from_web(
         workspace=workspace,
         activity_type=activity_type,
         flexibility=flexibility,
+        description=description or None,
+        effort=effort,
+        focus_demand=focus_demand,
+        preferred_date=(
+            date.fromisoformat(preferred_date)
+            if preferred_date
+            else None
+        ),
+        preferred_time_of_day=(
+            preferred_time_of_day
+            if preferred_time_of_day
+            else None
+        ),
+        preferred_start_time=(
+            time.fromisoformat(preferred_start_time)
+            if preferred_start_time
+            else None
+        ),        
     )    
 
     task_service.create(
@@ -184,6 +260,7 @@ def create_task_from_web(
 @router.post("/web/tasks/{task_id}/edit")
 def edit_task_from_web(
     task_id: int,
+    request: Request,
     title: str = Form(...),
     estimated_minutes: int = Form(...),
     priority: str = Form(...),
@@ -191,10 +268,26 @@ def edit_task_from_web(
     workspace: str = Form(...),
     activity_type: str = Form(...),
     flexibility: str = Form(...),
+    description: str = Form(""),
+    effort: str = Form("medio"),
+    focus_demand: str = Form("medio"),
+    preferred_date: str = Form(""),
+    preferred_time_of_day: str = Form(""),
+    preferred_start_time: str = Form(""),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
-    request = TaskUpdate(
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web/tasks",
+            status_code=303,
+        )
+
+    task_update = TaskUpdate(
         title=title,
         estimated_minutes=estimated_minutes,
         priority=priority,
@@ -202,12 +295,32 @@ def edit_task_from_web(
         workspace=workspace,
         activity_type=activity_type,
         flexibility=flexibility,
+        description=description or None,
+        effort=effort,
+        focus_demand=focus_demand,
+        preferred_date=(
+            date.fromisoformat(preferred_date)
+            if preferred_date
+            else None
+        ),
+        preferred_time_of_day=(
+            preferred_time_of_day
+            if preferred_time_of_day
+            else None
+        ),
+        preferred_start_time=(
+            time.fromisoformat(preferred_start_time)
+            if preferred_start_time
+            else None
+        ),
+
     )
 
     task_service.update(
         db=db,
         task_id=task_id,
-        request=request,
+        request=task_update,
+        user_id=int(user_id),
     )
 
     return RedirectResponse(

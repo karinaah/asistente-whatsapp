@@ -1,12 +1,16 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tareas - AURA</title>
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
+
 <body>
+
     <div class="container">
 
         <nav>
@@ -22,6 +26,7 @@
         <p>Total de tareas: {{ tasks | length }}</p>
 
         <div class="workspace-filters">
+
             <a
                 href="/web/tasks"
                 {% if not selected_workspace %}
@@ -48,7 +53,9 @@
             >
                 Personal
             </a>
+
         </div>
+
 
         <h2>Nueva tarea</h2>
 
@@ -64,8 +71,12 @@
                 >
             </div>
 
+
             <div class="form-group">
-                <label for="estimated_minutes">Duración estimada (minutos)</label>
+                <label for="estimated_minutes">
+                    Duración estimada (minutos)
+                </label>
+
                 <input
                     type="number"
                     id="estimated_minutes"
@@ -75,8 +86,10 @@
                 >
             </div>
 
+
             <div class="form-group">
                 <label for="priority">Prioridad</label>
+
                 <select id="priority" name="priority">
                     <option value="baja">Baja</option>
                     <option value="media" selected>Media</option>
@@ -84,8 +97,10 @@
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label for="category">Categoría</label>
+
                 <select id="category" name="category">
                     <option value="trabajo">Trabajo</option>
                     <option value="estudio">Estudio</option>
@@ -96,16 +111,20 @@
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label for="workspace">Workspace</label>
+
                 <select id="workspace" name="workspace">
                     <option value="personal" selected>Personal</option>
                     <option value="trabajo">Trabajo</option>
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label for="activity_type">Tipo de actividad</label>
+
                 <select id="activity_type" name="activity_type">
                     <option value="deep_work">Deep work</option>
                     <option value="meeting">Reunión</option>
@@ -119,13 +138,92 @@
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label for="flexibility">Flexibilidad</label>
+
                 <select id="flexibility" name="flexibility">
                     <option value="flexible" selected>Flexible</option>
                     <option value="semi_flexible">Semi flexible</option>
                     <option value="fixed">Fija</option>
                 </select>
+            </div>
+
+
+            <div class="form-group">
+                <label for="description">Descripción</label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="3"
+                    placeholder="Detalles opcionales de la tarea"
+                ></textarea>
+            </div>
+
+
+            <div class="form-group">
+                <label for="effort">Esfuerzo</label>
+
+                <select id="effort" name="effort">
+                    <option value="bajo">Bajo</option>
+                    <option value="medio" selected>Medio</option>
+                    <option value="alto">Alto</option>
+                </select>
+            </div>
+
+
+            <div class="form-group">
+                <label for="focus_demand">
+                    Concentración requerida
+                </label>
+
+                <select id="focus_demand" name="focus_demand">
+                    <option value="bajo">Baja</option>
+                    <option value="medio" selected>Media</option>
+                    <option value="alto">Alta</option>
+                </select>
+            </div>
+
+
+            <div class="form-group">
+                <label for="preferred_date">Fecha preferida</label>
+
+                <input
+                    type="date"
+                    id="preferred_date"
+                    name="preferred_date"
+                >
+            </div>
+
+
+            <div class="form-group">
+                <label for="preferred_time_of_day">
+                    Momento preferido del día
+                </label>
+
+                <select
+                    id="preferred_time_of_day"
+                    name="preferred_time_of_day"
+                >
+                    <option value="">Sin preferencia</option>
+                    <option value="mañana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="noche">Noche</option>
+                </select>
+            </div>
+
+
+            <div class="form-group">
+                <label for="preferred_start_time">
+                    Hora preferida
+                </label>
+
+                <input
+                    type="time"
+                    id="preferred_start_time"
+                    name="preferred_start_time"
+                >
             </div>
 
 
@@ -135,6 +233,7 @@
 
         </form>
 
+
         {% for task in tasks %}
 
             <div class="task-card task-{{ task.status.value }}">
@@ -143,7 +242,9 @@
                     {{ task.title }}
                 </div>
 
+
                 <p class="task-meta">
+
                     Estado: {{ task.status.value }}
                     |
                     Prioridad: {{ task.priority.value }}
@@ -158,8 +259,8 @@
                     |
                     Duración: {{ task.estimated_minutes }} min
 
-
                 </p>
+
 
                 <form
                     method="post"
@@ -169,6 +270,7 @@
 
                     <div class="form-group">
                         <label>Tarea</label>
+
                         <input
                             type="text"
                             name="title"
@@ -177,8 +279,10 @@
                         >
                     </div>
 
+
                     <div class="form-group">
                         <label>Duración estimada</label>
+
                         <input
                             type="number"
                             name="estimated_minutes"
@@ -188,74 +292,340 @@
                         >
                     </div>
 
+
                     <div class="form-group">
                         <label>Prioridad</label>
+
                         <select name="priority">
-                            <option value="baja" {% if task.priority.value == "baja" %}selected{% endif %}>Baja</option>
-                            <option value="media" {% if task.priority.value == "media" %}selected{% endif %}>Media</option>
-                            <option value="alta" {% if task.priority.value == "alta" %}selected{% endif %}>Alta</option>
+                            <option
+                                value="baja"
+                                {% if task.priority.value == "baja" %}selected{% endif %}
+                            >
+                                Baja
+                            </option>
+
+                            <option
+                                value="media"
+                                {% if task.priority.value == "media" %}selected{% endif %}
+                            >
+                                Media
+                            </option>
+
+                            <option
+                                value="alta"
+                                {% if task.priority.value == "alta" %}selected{% endif %}
+                            >
+                                Alta
+                            </option>
                         </select>
                     </div>
+
 
                     <div class="form-group">
                         <label>Categoría</label>
+
                         <select name="category">
-                            <option value="trabajo" {% if task.category.value == "trabajo" %}selected{% endif %}>Trabajo</option>
-                            <option value="estudio" {% if task.category.value == "estudio" %}selected{% endif %}>Estudio</option>
-                            <option value="personal" {% if task.category.value == "personal" %}selected{% endif %}>Personal</option>
-                            <option value="salud" {% if task.category.value == "salud" %}selected{% endif %}>Salud</option>
-                            <option value="tramites" {% if task.category.value == "tramites" %}selected{% endif %}>Trámites</option>
-                            <option value="otro" {% if task.category.value == "otro" %}selected{% endif %}>Otro</option>
+
+                            <option
+                                value="trabajo"
+                                {% if task.category.value == "trabajo" %}selected{% endif %}
+                            >
+                                Trabajo
+                            </option>
+
+                            <option
+                                value="estudio"
+                                {% if task.category.value == "estudio" %}selected{% endif %}
+                            >
+                                Estudio
+                            </option>
+
+                            <option
+                                value="personal"
+                                {% if task.category.value == "personal" %}selected{% endif %}
+                            >
+                                Personal
+                            </option>
+
+                            <option
+                                value="salud"
+                                {% if task.category.value == "salud" %}selected{% endif %}
+                            >
+                                Salud
+                            </option>
+
+                            <option
+                                value="tramites"
+                                {% if task.category.value == "tramites" %}selected{% endif %}
+                            >
+                                Trámites
+                            </option>
+
+                            <option
+                                value="otro"
+                                {% if task.category.value == "otro" %}selected{% endif %}
+                            >
+                                Otro
+                            </option>
+
                         </select>
                     </div>
+
 
                     <div class="form-group">
                         <label>Workspace</label>
+
                         <select name="workspace">
-                            <option value="personal" {% if task.workspace.value == "personal" %}selected{% endif %}>Personal</option>
-                            <option value="trabajo" {% if task.workspace.value == "trabajo" %}selected{% endif %}>Trabajo</option>
+
+                            <option
+                                value="personal"
+                                {% if task.workspace.value == "personal" %}selected{% endif %}
+                            >
+                                Personal
+                            </option>
+
+                            <option
+                                value="trabajo"
+                                {% if task.workspace.value == "trabajo" %}selected{% endif %}
+                            >
+                                Trabajo
+                            </option>
+
                         </select>
                     </div>
 
+
                     <div class="form-group">
                         <label>Tipo de actividad</label>
+
                         <select name="activity_type">
-                            <option value="deep_work" {% if task.activity_type.value == "deep_work" %}selected{% endif %}>Deep work</option>
-                            <option value="meeting" {% if task.activity_type.value == "meeting" %}selected{% endif %}>Reunión</option>
-                            <option value="administrative" {% if task.activity_type.value == "administrative" %}selected{% endif %}>Administrativa</option>
-                            <option value="exercise" {% if task.activity_type.value == "exercise" %}selected{% endif %}>Ejercicio</option>
-                            <option value="errand" {% if task.activity_type.value == "errand" %}selected{% endif %}>Trámite</option>
-                            <option value="study" {% if task.activity_type.value == "study" %}selected{% endif %}>Estudio</option>
-                            <option value="routine" {% if task.activity_type.value == "routine" %}selected{% endif %}>Rutina</option>
-                            <option value="rest" {% if task.activity_type.value == "rest" %}selected{% endif %}>Descanso</option>
-                            <option value="other" {% if task.activity_type.value == "other" %}selected{% endif %}>Otro</option>
+
+                            <option
+                                value="deep_work"
+                                {% if task.activity_type.value == "deep_work" %}selected{% endif %}
+                            >
+                                Deep work
+                            </option>
+
+                            <option
+                                value="meeting"
+                                {% if task.activity_type.value == "meeting" %}selected{% endif %}
+                            >
+                                Reunión
+                            </option>
+
+                            <option
+                                value="administrative"
+                                {% if task.activity_type.value == "administrative" %}selected{% endif %}
+                            >
+                                Administrativa
+                            </option>
+
+                            <option
+                                value="exercise"
+                                {% if task.activity_type.value == "exercise" %}selected{% endif %}
+                            >
+                                Ejercicio
+                            </option>
+
+                            <option
+                                value="errand"
+                                {% if task.activity_type.value == "errand" %}selected{% endif %}
+                            >
+                                Trámite
+                            </option>
+
+                            <option
+                                value="study"
+                                {% if task.activity_type.value == "study" %}selected{% endif %}
+                            >
+                                Estudio
+                            </option>
+
+                            <option
+                                value="routine"
+                                {% if task.activity_type.value == "routine" %}selected{% endif %}
+                            >
+                                Rutina
+                            </option>
+
+                            <option
+                                value="rest"
+                                {% if task.activity_type.value == "rest" %}selected{% endif %}
+                            >
+                                Descanso
+                            </option>
+
+                            <option
+                                value="other"
+                                {% if task.activity_type.value == "other" %}selected{% endif %}
+                            >
+                                Otro
+                            </option>
+
                         </select>
                     </div>
 
 
                     <div class="form-group">
                         <label>Flexibilidad</label>
+
                         <select name="flexibility">
+
                             <option
                                 value="flexible"
                                 {% if task.flexibility.value == "flexible" %}selected{% endif %}
                             >
                                 Flexible
                             </option>
+
                             <option
                                 value="semi_flexible"
                                 {% if task.flexibility.value == "semi_flexible" %}selected{% endif %}
                             >
                                 Semi flexible
                             </option>
+
                             <option
                                 value="fixed"
                                 {% if task.flexibility.value == "fixed" %}selected{% endif %}
                             >
                                 Fija
                             </option>
+
                         </select>
-                    </div>                    
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Descripción</label>
+
+                        <textarea
+                            name="description"
+                            rows="3"
+                            placeholder="Detalles opcionales de la tarea"
+                        >{{ task.description or "" }}</textarea>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Esfuerzo</label>
+
+                        <select name="effort">
+
+                            <option
+                                value="bajo"
+                                {% if task.effort.value == "bajo" %}selected{% endif %}
+                            >
+                                Bajo
+                            </option>
+
+                            <option
+                                value="medio"
+                                {% if task.effort.value == "medio" %}selected{% endif %}
+                            >
+                                Medio
+                            </option>
+
+                            <option
+                                value="alto"
+                                {% if task.effort.value == "alto" %}selected{% endif %}
+                            >
+                                Alto
+                            </option>
+
+                        </select>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Concentración requerida</label>
+
+                        <select name="focus_demand">
+
+                            <option
+                                value="bajo"
+                                {% if task.focus_demand.value == "bajo" %}selected{% endif %}
+                            >
+                                Baja
+                            </option>
+
+                            <option
+                                value="medio"
+                                {% if task.focus_demand.value == "medio" %}selected{% endif %}
+                            >
+                                Media
+                            </option>
+
+                            <option
+                                value="alto"
+                                {% if task.focus_demand.value == "alto" %}selected{% endif %}
+                            >
+                                Alta
+                            </option>
+
+                        </select>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Fecha preferida</label>
+
+                        <input
+                            type="date"
+                            name="preferred_date"
+                            value="{{ task.preferred_date.isoformat() if task.preferred_date else '' }}"
+                        >
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Momento preferido del día</label>
+
+                        <select name="preferred_time_of_day">
+
+                            <option
+                                value=""
+                                {% if not task.preferred_time_of_day %}selected{% endif %}
+                            >
+                                Sin preferencia
+                            </option>
+
+                            <option
+                                value="mañana"
+                                {% if task.preferred_time_of_day and task.preferred_time_of_day.value == "mañana" %}selected{% endif %}
+                            >
+                                Mañana
+                            </option>
+
+                            <option
+                                value="tarde"
+                                {% if task.preferred_time_of_day and task.preferred_time_of_day.value == "tarde" %}selected{% endif %}
+                            >
+                                Tarde
+                            </option>
+
+                            <option
+                                value="noche"
+                                {% if task.preferred_time_of_day and task.preferred_time_of_day.value == "noche" %}selected{% endif %}
+                            >
+                                Noche
+                            </option>
+
+                        </select>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Hora preferida</label>
+
+                        <input
+                            type="time"
+                            name="preferred_start_time"
+                            value="{{ task.preferred_start_time.strftime('%H:%M') if task.preferred_start_time else '' }}"
+                        >
+                    </div>
+
 
                     <button type="submit" class="create-button">
                         Guardar cambios
@@ -263,28 +633,40 @@
 
                 </form>
 
+
                 {% if task.status.value != "completada" %}
+
                     <form
                         method="post"
                         action="/web/tasks/{{ task.id }}/complete"
                     >
-                        <button type="submit" class="complete-button">
+
+                        <button
+                            type="submit"
+                            class="complete-button"
+                        >
                             Completar
                         </button>
+
                     </form>
+
                 {% endif %}
+
 
                 <form
                     method="post"
                     action="/web/tasks/{{ task.id }}/delete"
                     onsubmit="return confirm('¿Seguro que quieres eliminar esta tarea?');"
                 >
+
                     <button type="submit">
                         Eliminar
                     </button>
+
                 </form>
 
             </div>
+
 
         {% else %}
 
@@ -295,5 +677,7 @@
         {% endfor %}
 
     </div>
+
 </body>
+
 </html>
