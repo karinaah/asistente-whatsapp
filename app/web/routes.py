@@ -46,6 +46,30 @@ recurring_availability_service = (
 )
 conversation_message_repository = ConversationMessageRepository()
 
+def get_or_create_web_user_id(
+    request: Request,
+    db: Session,
+) -> str:
+    user_id = request.cookies.get(
+        "aura_user_id",
+    )
+
+    if user_id is not None:
+        try:
+            user = user_service.get_user(
+                db,
+                user_id=int(user_id),
+            )
+        except ValueError:
+            user = None
+
+        if user is not None:
+            return str(user.id)
+
+    user = user_service.create_user(db)
+
+    return str(user.id)
+
 @router.get("/web")
 def home(
     request: Request,
@@ -56,13 +80,10 @@ def home(
 ):
     today = date.today()
 
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     planning_request = PlanningFromDBRequest()
 
@@ -138,14 +159,10 @@ def tasks_page(
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
-
     tasks = task_service.get_for_user(
         db=db,
         user_id=int(user_id),
@@ -224,13 +241,10 @@ def create_task_from_web(
     preferred_time_of_day: str = Form(""),
     preferred_start_time: str = Form(""),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     task = Task(
         user_id=int(user_id),
@@ -347,13 +361,10 @@ def routines_page(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     routines = routine_service.get_for_user(
         db=db,
@@ -388,13 +399,10 @@ def create_routine_from_web(
     workspace: str = Form("personal"),
     db: Session = Depends(get_db),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     parsed_start_time = None
 
@@ -497,13 +505,10 @@ def chat_page(
     if session_id is None:
         session_id = str(uuid4())
 
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     messages = conversation_message_repository.get_by_session(
         db=db,
@@ -623,13 +628,10 @@ def availability_page(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     availabilities = (
         recurring_availability_service.get_for_user(
@@ -663,13 +665,10 @@ def create_availability_from_web(
     end_time: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    user_id = get_or_create_web_user_id(
+        request=request,
+        db=db,
     )
-
-    if user_id is None:
-        user = user_service.create_user(db)
-        user_id = str(user.id)
 
     start_hour, start_minute = map(
         int,

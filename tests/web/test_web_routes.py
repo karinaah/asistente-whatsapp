@@ -6,10 +6,11 @@ from app.models.task import Task
 from app.models.task_db import TaskDB
 from app.models.user_db import UserDB
 from app.services.task_service import TaskService
+from app.services.user_service import UserService
 from app.models.conversation_message_db import ConversationMessageDB
 
 client = TestClient(app)
-
+user_service = UserService()
 
 def test_web_home_returns_200():
     response = client.get("/web")
@@ -57,6 +58,35 @@ def test_web_chat_creates_user_cookie():
     assert user_id is not None
     assert user_id != ""
     assert int(user_id) >= 1
+
+def test_web_home_replaces_stale_user_cookie():
+    client.cookies.clear()
+
+    client.cookies.set(
+        "aura_user_id",
+        "999999999",
+        domain="testserver.local",
+        path="/",
+    )
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+
+    user_id = client.cookies.get(
+        "aura_user_id"
+    )
+
+    assert user_id is not None
+    assert user_id != "999999999"
+
+    with SessionLocal() as db:
+        user = user_service.get_user(
+            db,
+            user_id=int(user_id),
+        )
+
+    assert user is not None
 
 def test_web_chat_reuses_user_cookie():
     client.cookies.clear()

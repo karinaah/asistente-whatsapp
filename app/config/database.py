@@ -1,8 +1,13 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
-DATABASE_URL = "sqlite:///./aura.db"
+DATABASE_URL = os.getenv(
+    "AURA_DATABASE_URL",
+    "sqlite:///./aura.db",
+)
 
 
 engine = create_engine(
