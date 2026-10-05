@@ -915,6 +915,7 @@ def test_web_create_task_assigns_current_user():
             "workspace": "trabajo",
             "activity_type": "deep_work",
             "flexibility": "semi_flexible",
+            "deadline": "2026-10-10T18:30",
             "preferred_date": "2026-10-05",
             "preferred_time_of_day": "tarde",
             "preferred_start_time": "15:30",
@@ -943,6 +944,7 @@ def test_web_create_task_assigns_current_user():
         assert task.estimated_minutes == 90
         assert task.effort == "alto"
         assert task.focus_demand == "alto"
+        assert task.deadline.isoformat() == "2026-10-10T18:30:00"
         assert task.preferred_date.isoformat() == "2026-10-05"
         assert task.preferred_time_of_day == "tarde"
         assert task.preferred_start_time.strftime("%H:%M") == "15:30"
@@ -992,6 +994,7 @@ def test_web_edit_task_updates_planning_fields():
             "workspace": "trabajo",
             "activity_type": "deep_work",
             "flexibility": "semi_flexible",
+            "deadline": "2026-10-15T20:00",
             "preferred_date": "2026-10-06",
             "preferred_time_of_day": "tarde",
             "preferred_start_time": "16:00",
@@ -1016,6 +1019,7 @@ def test_web_edit_task_updates_planning_fields():
         assert task.estimated_minutes == 75
         assert task.effort == "alto"
         assert task.focus_demand == "alto"
+        assert task.deadline.isoformat() == "2026-10-15T20:00:00"
         assert task.preferred_date.isoformat() == "2026-10-06"
         assert task.preferred_time_of_day == "tarde"
         assert task.preferred_start_time.strftime("%H:%M") == "16:00"

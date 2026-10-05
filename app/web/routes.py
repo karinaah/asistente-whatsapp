@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 from uuid import uuid4
 
 
@@ -238,6 +238,7 @@ def create_task_from_web(
     effort: str = Form("medio"),
     focus_demand: str = Form("medio"),
     preferred_date: str = Form(""),
+    deadline: str = Form(""),
     preferred_time_of_day: str = Form(""),
     preferred_start_time: str = Form(""),
 ):
@@ -258,6 +259,12 @@ def create_task_from_web(
         description=description or None,
         effort=effort,
         focus_demand=focus_demand,
+
+        deadline=(
+            datetime.fromisoformat(deadline)
+            if deadline
+            else None
+        ),        
         preferred_date=(
             date.fromisoformat(preferred_date)
             if preferred_date
@@ -300,6 +307,7 @@ def edit_task_from_web(
     effort: str = Form("medio"),
     focus_demand: str = Form("medio"),
     preferred_date: str = Form(""),
+    deadline: str = Form(""),
     preferred_time_of_day: str = Form(""),
     preferred_start_time: str = Form(""),
     db: Session = Depends(get_db),
@@ -326,6 +334,12 @@ def edit_task_from_web(
         description=description or None,
         effort=effort,
         focus_demand=focus_demand,
+        deadline=(
+            datetime.fromisoformat(deadline)
+            if deadline
+            else None
+        ),
+
         preferred_date=(
             date.fromisoformat(preferred_date)
             if preferred_date
