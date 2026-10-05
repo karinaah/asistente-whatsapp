@@ -49,6 +49,20 @@ class NotificationRepository:
             .all()
         )
 
+    def get_by_id(
+        self,
+        db: Session,
+        notification_id: int,
+    ) -> NotificationDB | None:
+        return (
+            db.query(NotificationDB)
+            .filter(
+                NotificationDB.id
+                == notification_id,
+            )
+            .first()
+        )
+
     def mark_delivered(
         self,
         db: Session,

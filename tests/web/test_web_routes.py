@@ -1109,3 +1109,107 @@ def test_web_chat_refresh_does_not_duplicate_messages():
 
     finally:
         db.close()          
+
+def test_web_home_can_complete_scheduled_task():
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+
+    db = SessionLocal()
+
+    try:
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=user_id,
+                title="Tarea dashboard completar test",
+                estimated_minutes=15,
+            ),
+        )
+        task_id = task.id
+    finally:
+        db.close()
+
+    response = client.get("/web")
+
+    assert response.status_code == 200
+    assert "Tarea dashboard completar test" in response.text
+
+    assert (
+        f'/web/tasks/{task_id}/complete'
+        in response.text
+    )       
+
+def test_web_cannot_mark_other_user_notification_as_read():
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    current_user_id = int(
+        client.cookies.get("aura_user_id")
+    )
+
+    from app.models.notification import (
+        Notification,
+        NotificationStatus,
+    )
+    from app.models.notification_db import NotificationDB
+    from app.repositories.notification_repository import (
+        NotificationRepository,
+    )
+    from app.services.user_service import UserService
+
+    db = SessionLocal()
+
+    try:
+        other_user = UserService().create_user(db)
+
+        assert other_user.id != current_user_id
+
+        notification = NotificationRepository().create(
+            db,
+            Notification(
+                user_id=other_user.id,
+                title="Notificación de otro usuario",
+                message="No debe poder modificarse.",
+            ),
+        )
+
+        notification_id = notification.id
+
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/web/notifications/{notification_id}/read",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    db = SessionLocal()
+
+    try:
+        stored_notification = (
+            db.query(NotificationDB)
+            .filter(
+                NotificationDB.id
+                == notification_id
+            )
+            .first()
+        )
+
+        assert stored_notification is not None
+        assert (
+            stored_notification.status
+            == NotificationStatus.PENDING.value
+        )
+        assert stored_notification.read_at is None
+
+    finally:
+        db.close()     

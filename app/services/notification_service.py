@@ -68,7 +68,20 @@ class NotificationService:
         self,
         db: Session,
         notification_id: int,
+        user_id: int | None = None,
     ) -> NotificationDB | None:
+        if user_id is not None:
+            notification = self.repository.get_by_id(
+                db,
+                notification_id,
+            )
+
+            if notification is None:
+                return None
+
+            if notification.user_id != user_id:
+                return None
+
         return self.repository.mark_read(
             db,
             notification_id,

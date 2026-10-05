@@ -37,6 +37,18 @@ class FakeNotificationRepository:
             )
         ]
 
+
+    def get_by_id(
+        self,
+        db,
+        notification_id,
+    ):
+        for notification in self.created:
+            if notification.id == notification_id:
+                return notification
+
+        return None
+
     def mark_delivered(
         self,
         db,
@@ -163,3 +175,33 @@ def test_marks_notification_as_delivered_and_read():
         read.status
         == NotificationStatus.READ
     )
+
+def test_does_not_mark_other_user_notification_as_read():
+    repository = FakeNotificationRepository()
+    service = NotificationService(
+        repository=repository,
+    )
+
+    follow_up = SimpleNamespace(
+        id=10,
+        user_id=1,
+        title="Notificación privada",
+        message="Solo pertenece al usuario 1.",
+    )
+
+    notification = service.create_from_follow_up(
+        db=None,
+        follow_up=follow_up,
+    )
+
+    result = service.mark_read(
+        db=None,
+        notification_id=notification.id,
+        user_id=2,
+    )
+
+    assert result is None
+    assert (
+        notification.status
+        == NotificationStatus.PENDING
+    )    

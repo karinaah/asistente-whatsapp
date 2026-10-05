@@ -71,6 +71,14 @@ def home(
         request=planning_request,
         user_id=int(user_id),
     )
+    scheduled_task_ids = {
+        (
+            item.start_time,
+            item.end_time,
+        ): item.task.id
+        for item in plan.scheduled_tasks
+    }
+
     notifications = notification_service.get_pending_for_user(
         db=db,
         user_id=int(user_id),
@@ -82,6 +90,7 @@ def home(
             "today": today,
             "plan": plan,
             "notifications": notifications,
+            "scheduled_task_ids": scheduled_task_ids,
         },
     )
 
@@ -590,12 +599,19 @@ def chat_message(
 @router.post("/web/notifications/{notification_id}/read")
 def read_notification(
     notification_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    notification_service.mark_read(
-        db=db,
-        notification_id=notification_id,
+    user_id = request.cookies.get(
+        "aura_user_id",
     )
+
+    if user_id is not None:
+        notification_service.mark_read(
+            db=db,
+            notification_id=notification_id,
+            user_id=int(user_id),
+        )
 
     return RedirectResponse(
         url="/web",

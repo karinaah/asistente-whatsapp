@@ -14,8 +14,12 @@
             |
             <a href="/web/tasks">Tareas</a>
             |
+            <a href="/web/routines">Rutinas</a>
+            |
+            <a href="/web/availability">Disponibilidad</a>
+            |
             <a href="/web/chat">Chat</a>
-        </nav>
+        </nav>        
 
         <div class="header">
             <h1>AURA</h1>
@@ -56,37 +60,57 @@
             </div>
         </div>
 
-        <h2>Plan de hoy</h2>
+        <h2>Agenda de hoy</h2>
 
-        {% for item in plan.scheduled_tasks %}
+        {% for block in plan.timeline %}
 
             <div class="task-card">
                 <div class="task-time">
-                    {{ item.start_time.strftime("%H:%M") }}
+                    {{ block.start_time.strftime("%H:%M") }}
                     -
-                    {{ item.end_time.strftime("%H:%M") }}
+                    {{ block.end_time.strftime("%H:%M") }}
                 </div>
 
                 <div class="task-title">
-                    {{ item.task.title }}
+                    {{ block.title }}
                 </div>
 
                 <p class="task-meta">
-                    Prioridad: {{ item.task.priority.value }}
-                    |
-                    Categoría: {{ item.task.category.value }}
+                    {% if block.block_type.value == "task" %}
+                        Tarea
+                    {% elif block.block_type.value == "event" %}
+                        Evento
+                    {% elif block.block_type.value == "break" %}
+                        Descanso
+                    {% endif %}
                 </p>
-                <form method="post" action="/web/tasks/{{ item.task.id }}/complete">
-                    <button type="submit" class="complete-button">
-                        Completar
-                    </button>
+                {% if block.block_type.value == "task" %}
+                    {% set task_id = scheduled_task_ids.get(
+                        (block.start_time, block.end_time)
+                    ) %}
 
-                </form>                
+                    {% if task_id %}
+                        <form
+                            method="post"
+                            action="/web/tasks/{{ task_id }}/complete"
+                        >
+                            <button
+                                type="submit"
+                                class="complete-button"
+                            >
+                                Completar
+                            </button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+
+
+
             </div>
 
         {% else %}
             <p class="empty-state">
-                No tienes tareas programadas para hoy.
+                No tienes actividades programadas para hoy.
             </p>
         {% endfor %}
 
