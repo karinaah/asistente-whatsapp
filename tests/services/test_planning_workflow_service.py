@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from app.models.schedule import PlanningFromDBRequest
 from app.models.task import (
@@ -1017,4 +1017,509 @@ def test_build_planning_request_includes_calendar_blocks(
         manual_block,
         availability_block,
         calendar_block,
-    ]    
+    ]
+
+def test_busy_day_does_not_fill_all_free_time_with_flexible_tasks(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            priority="media",
+            preferred_date=date(2026, 10, 5),
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            priority="media",
+            preferred_date=date(2026, 10, 5),
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Proyectos personales de TI",
+            estimated_minutes=180,
+            priority="media",
+            flexibility="flexible",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            priority="media",
+            flexibility="flexible",
+            deadline=datetime(2026, 11, 20, 12, 0),
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            priority="media",
+            flexibility="flexible",
+        ),
+        Task(
+            title="Cocinar",
+            estimated_minutes=120,
+            priority="media",
+            flexibility="flexible",
+        ),
+        Task(
+            title="Aseo",
+            estimated_minutes=120,
+            priority="media",
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 10, 5),
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_titles
+    assert "Yoga" in scheduled_titles
+
+    flexible_titles = {
+        "Proyectos personales de TI",
+        "Código tesis",
+        "Lavar ropa",
+        "Cocinar",
+        "Aseo",
+    }
+
+
+    scheduled_flexible_minutes = sum(
+        scheduled.task.estimated_minutes
+        for scheduled in plan.scheduled_tasks
+        if scheduled.task.title in flexible_titles
+    )
+
+    assert scheduled_flexible_minutes <= 60
+
+def test_day_without_fixed_commitments_can_schedule_more_flexible_work(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    tasks = [
+        Task(
+            title="Proyectos personales",
+            estimated_minutes=180,
+            priority="media",
+            flexibility="flexible",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            priority="media",
+            flexibility="flexible",
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            priority="media",
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=date(2026, 10, 10),
+        day_start_hour=8,
+        day_end_hour=18,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert scheduled_titles == {
+        "Proyectos personales",
+        "Código tesis",
+        "Lavar ropa",
+    }
+
+    scheduled_minutes = sum(
+        scheduled.task.estimated_minutes
+        for scheduled in plan.scheduled_tasks
+    )
+    assert scheduled_minutes == 360
+def test_preferred_today_task_is_not_removed_by_daily_load_budget(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            preferred_date=plan_date,
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            preferred_date=plan_date,
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            preferred_date=plan_date,
+            flexibility="flexible",
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_titles
+    assert "Yoga" in scheduled_titles
+    assert "Código tesis" in scheduled_titles
+def test_task_due_tomorrow_is_not_removed_by_daily_load_budget(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            preferred_date=plan_date,
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            preferred_date=plan_date,
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Entrega urgente",
+            estimated_minutes=120,
+            flexibility="flexible",
+            deadline=datetime(2026, 10, 6, 18, 0),
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_titles
+    assert "Yoga" in scheduled_titles
+    assert "Entrega urgente" in scheduled_titles
+
+def test_future_deadline_does_not_force_task_into_busy_day(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            preferred_date=plan_date,
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            preferred_date=plan_date,
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            flexibility="flexible",
+            deadline=datetime(2026, 11, 20, 12, 0),
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_titles
+    assert "Yoga" in scheduled_titles
+    assert "Código tesis" not in scheduled_titles
+
+def test_explain_plan_applies_daily_task_selection(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Tarea flexible",
+            estimated_minutes=120,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    selection_calls = []
+
+    def fake_select_for_day(
+        tasks,
+        plan_date,
+    ):
+        selection_calls.append(
+            {
+                "tasks": tasks,
+                "plan_date": plan_date,
+            }
+        )
+        return tasks
+
+    monkeypatch.setattr(
+        service.daily_task_selection_service,
+        "select_for_day",
+        fake_select_for_day,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    service.explain_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    assert len(selection_calls) == 1
+    assert selection_calls[0]["tasks"] == tasks
+    assert selection_calls[0]["plan_date"] == plan_date
+
+def test_create_plan_with_decisions_applies_daily_task_selection(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Tarea flexible",
+            estimated_minutes=120,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    selection_calls = []
+
+    def fake_select_for_day(
+        tasks,
+        plan_date,
+    ):
+        selection_calls.append(
+            {
+                "tasks": tasks,
+                "plan_date": plan_date,
+            }
+        )
+        return tasks
+
+    monkeypatch.setattr(
+        service.daily_task_selection_service,
+        "select_for_day",
+        fake_select_for_day,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=8,
+        day_end_hour=20,
+        break_minutes=0,
+        busy_blocks=[],
+    )
+
+    service.create_plan_with_decisions_from_db(
+        db=None,
+        request=request,
+    )
+
+    assert len(selection_calls) == 1
+    assert selection_calls[0]["tasks"] == tasks
+    assert selection_calls[0]["plan_date"] == plan_date

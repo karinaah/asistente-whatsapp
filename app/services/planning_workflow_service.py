@@ -10,6 +10,9 @@ from app.services.adaptive_profile_service import (
 )
 from app.services.planner_service import PlannerService
 from app.services.task_service import TaskService
+from app.services.daily_task_selection_service import (
+    DailyTaskSelectionService,
+)
 from app.models.planning_decision import (
     PlanningDecision,
 )
@@ -23,6 +26,9 @@ from app.services.calendar_service import CalendarService
 class PlanningWorkflowService:
     def __init__(self) -> None:
         self.task_service = TaskService()
+        self.daily_task_selection_service = (
+            DailyTaskSelectionService()
+        )
         self.planner_service = PlannerService()
         self.adaptive_profile_service = (
             AdaptiveProfileService()
@@ -75,6 +81,12 @@ class PlanningWorkflowService:
             )
         ]
 
+        tasks = (
+            self.daily_task_selection_service.select_for_day(
+                tasks=tasks,
+                plan_date=request.plan_date,
+            )
+        )
 
         planning_request = self.build_planning_request(
             db=db,
@@ -185,7 +197,12 @@ class PlanningWorkflowService:
                 or task.preferred_date == request.plan_date
             )
         ]
-
+        tasks = (
+            self.daily_task_selection_service.select_for_day(
+                tasks=tasks,
+                plan_date=request.plan_date,
+            )
+        )
 
         planning_request = self.build_planning_request(
             db=db,
@@ -233,6 +250,12 @@ class PlanningWorkflowService:
             )
         ]
 
+        tasks = (
+            self.daily_task_selection_service.select_for_day(
+                tasks=tasks,
+                plan_date=request.plan_date,
+            )
+        )
 
         planning_request = self.build_planning_request(
             db=db,
