@@ -752,3 +752,141 @@ def test_in_progress_task_is_scheduled_before_pending_task():
         plan.scheduled_tasks[1].task.title
         == "Tarea pendiente"
     )    
+
+def test_fixed_task_reserves_time_before_flexible_tasks():
+    planner = PlannerService()
+
+    flexible_task = Task(
+        title="Código tesis",
+        estimated_minutes=120,
+        priority="media",
+        flexibility=TaskFlexibility.flexible,
+    )
+
+    fixed_task = Task(
+        title="Trabajo",
+        estimated_minutes=540,
+        priority="media",
+        preferred_date=date.fromisoformat("2026-10-05"),
+        preferred_start_time=time.fromisoformat("09:00"),
+        flexibility=TaskFlexibility.fixed,
+    )
+
+    request = PlanningRequest(
+        tasks=[
+            flexible_task,
+            fixed_task,
+        ],
+        plan_date=date.fromisoformat("2026-10-05"),
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = planner.create_plan(request)
+
+    scheduled_by_title = {
+        scheduled.task.title: scheduled
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_by_title
+    assert scheduled_by_title["Trabajo"].start_time.time() == time(
+        hour=9
+    )
+    assert scheduled_by_title["Trabajo"].end_time.time() == time(
+        hour=18
+    )
+
+    assert "Código tesis" in scheduled_by_title
+
+    thesis = scheduled_by_title["Código tesis"]
+
+    assert (
+        thesis.end_time
+        <= scheduled_by_title["Trabajo"].start_time
+        or thesis.start_time
+        >= scheduled_by_title["Trabajo"].end_time
+    )
+
+def test_fixed_task_is_not_displaced_by_multiple_flexible_tasks():
+    planner = PlannerService()
+
+    tasks = [
+        Task(
+            title="Proyectos personales de TI",
+            estimated_minutes=180,
+            priority="media",
+            flexibility=TaskFlexibility.flexible,
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            priority="media",
+            flexibility=TaskFlexibility.flexible,
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            priority="media",
+            flexibility=TaskFlexibility.flexible,
+        ),
+        Task(
+            title="Cocinar",
+            estimated_minutes=120,
+            priority="media",
+            flexibility=TaskFlexibility.flexible,
+        ),
+        Task(
+            title="Aseo",
+            estimated_minutes=120,
+            priority="media",
+            flexibility=TaskFlexibility.flexible,
+        ),
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            priority="media",
+            preferred_date=date.fromisoformat("2026-10-05"),
+            preferred_start_time=time.fromisoformat("09:00"),
+            flexibility=TaskFlexibility.fixed,
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            priority="media",
+            preferred_date=date.fromisoformat("2026-10-05"),
+            preferred_start_time=time.fromisoformat("18:00"),
+            flexibility=TaskFlexibility.fixed,
+        ),
+    ]
+
+    request = PlanningRequest(
+        tasks=tasks,
+        plan_date=date.fromisoformat("2026-10-05"),
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = planner.create_plan(request)
+
+    scheduled_by_title = {
+        scheduled.task.title: scheduled
+        for scheduled in plan.scheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_by_title
+    assert scheduled_by_title["Trabajo"].start_time.time() == time(
+        hour=9
+    )
+    assert scheduled_by_title["Trabajo"].end_time.time() == time(
+        hour=18
+    )
+
+    assert "Yoga" in scheduled_by_title
+    assert scheduled_by_title["Yoga"].start_time.time() == time(
+        hour=18
+    )    
