@@ -1605,3 +1605,93 @@ def test_daily_load_deferred_tasks_remain_unscheduled(
 
     assert "Código tesis" in unscheduled_titles
     assert "Cocinar" in unscheduled_titles
+
+def test_urgent_deadline_task_is_scheduled_before_normal_flexible_task(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            preferred_date=plan_date,
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            preferred_date=plan_date,
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            flexibility="flexible",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            flexibility="flexible",
+            deadline=datetime(2026, 10, 6, 12, 0),
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    thesis = next(
+        scheduled
+        for scheduled in plan.scheduled_tasks
+        if scheduled.task.title == "Código tesis"
+    )
+
+    laundry = next(
+        scheduled
+        for scheduled in plan.scheduled_tasks
+        if scheduled.task.title == "Lavar ropa"
+    )
+
+    assert thesis.start_time == datetime(
+        2026,
+        10,
+        5,
+        5,
+        0,
+    )
+
+    assert thesis.end_time == datetime(
+        2026,
+        10,
+        5,
+        7,
+        0,
+    )
+
+    assert thesis.start_time < laundry.start_time

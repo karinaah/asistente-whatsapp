@@ -33,6 +33,7 @@ class TaskSorter:
                 self.status_order[task.status],
                 self.flexibility_order[task.flexibility],
                 self.priority_order[task.priority],
+                task.deadline is None,
                 task.deadline or task.created_at,
                 -task.estimated_minutes,
             ),
