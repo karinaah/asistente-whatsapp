@@ -1523,3 +1523,85 @@ def test_create_plan_with_decisions_applies_daily_task_selection(
     assert len(selection_calls) == 1
     assert selection_calls[0]["tasks"] == tasks
     assert selection_calls[0]["plan_date"] == plan_date
+
+def test_daily_load_deferred_tasks_remain_unscheduled(
+    monkeypatch,
+):
+    service = PlanningWorkflowService()
+
+    plan_date = date(2026, 10, 5)
+
+    tasks = [
+        Task(
+            title="Trabajo",
+            estimated_minutes=540,
+            preferred_date=plan_date,
+            preferred_start_time=time(9, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Yoga",
+            estimated_minutes=90,
+            preferred_date=plan_date,
+            preferred_start_time=time(18, 0),
+            flexibility="fixed",
+        ),
+        Task(
+            title="Lavar ropa",
+            estimated_minutes=60,
+            flexibility="flexible",
+        ),
+        Task(
+            title="Código tesis",
+            estimated_minutes=120,
+            flexibility="flexible",
+            deadline=datetime(2026, 11, 20, 12, 0),
+        ),
+        Task(
+            title="Cocinar",
+            estimated_minutes=120,
+            flexibility="flexible",
+        ),
+    ]
+
+    monkeypatch.setattr(
+        service.task_service,
+        "get_plannable",
+        lambda db, user_id=None: tasks,
+    )
+
+    monkeypatch.setattr(
+        service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+
+    request = PlanningFromDBRequest(
+        plan_date=plan_date,
+        day_start_hour=5,
+        day_end_hour=21,
+        break_minutes=15,
+        busy_blocks=[],
+    )
+
+    plan = service.create_plan_from_db(
+        db=None,
+        request=request,
+    )
+
+    scheduled_titles = {
+        scheduled.task.title
+        for scheduled in plan.scheduled_tasks
+    }
+
+    unscheduled_titles = {
+        task.title
+        for task in plan.unscheduled_tasks
+    }
+
+    assert "Trabajo" in scheduled_titles
+    assert "Yoga" in scheduled_titles
+    assert "Lavar ropa" in scheduled_titles
+
+    assert "Código tesis" in unscheduled_titles
+    assert "Cocinar" in unscheduled_titles

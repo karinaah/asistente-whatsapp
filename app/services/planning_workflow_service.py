@@ -80,13 +80,24 @@ class PlanningWorkflowService:
                 or task.preferred_date == request.plan_date
             )
         ]
-
+        candidate_tasks = tasks
         tasks = (
             self.daily_task_selection_service.select_for_day(
-                tasks=tasks,
+                tasks=candidate_tasks,
                 plan_date=request.plan_date,
             )
         )
+
+        selected_task_ids = {
+            id(task)
+            for task in tasks
+        }
+
+        deferred_tasks = [
+            task
+            for task in candidate_tasks
+            if id(task) not in selected_task_ids
+        ]
 
         planning_request = self.build_planning_request(
             db=db,
@@ -102,11 +113,16 @@ class PlanningWorkflowService:
             )
         )
 
-        return self.planner_service.create_plan(
+        plan = self.planner_service.create_plan(
             request=planning_request,
             adaptive_profile=adaptive_profile,
         )
 
+        plan.unscheduled_tasks.extend(
+            deferred_tasks
+        )
+
+        return plan
 
     def build_planning_request(
         self,
