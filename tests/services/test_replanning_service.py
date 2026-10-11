@@ -19,13 +19,13 @@ def test_replan_from_time_starts_at_requested_time(
     monkeypatch.setattr(
         service.planning_workflow_service.task_service,
         "get_plannable",
-        lambda db: [task],
+        lambda db, user_id=None: [task],
     )
 
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -58,13 +58,13 @@ def test_replan_from_time_does_not_schedule_tasks_before_now(
     monkeypatch.setattr(
         service.planning_workflow_service.task_service,
         "get_plannable",
-        lambda db: [task],
+        lambda db, user_id=None: [task],
     )
 
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -113,7 +113,7 @@ def test_replan_excludes_completed_tasks(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -161,7 +161,7 @@ def test_replan_prioritizes_new_high_priority_task(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -223,7 +223,7 @@ def test_replan_respects_fixed_task_when_urgent_task_appears(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -281,6 +281,7 @@ def test_replan_accepts_structured_request(
         day_end_hour,
         break_minutes,
         busy_blocks,
+        user_id=None,
     ):
         assert plan_date == date.fromisoformat(
             "2026-08-22"
@@ -345,7 +346,7 @@ def test_replan_uses_remaining_minutes_for_active_task(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     request = ReplanningRequest(
@@ -410,7 +411,7 @@ def test_replan_excludes_tasks_for_future_dates(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     result = service.replan_from_time(
@@ -470,7 +471,7 @@ def test_active_task_replan_excludes_future_tasks(
     monkeypatch.setattr(
         service.planning_workflow_service.adaptive_profile_service,
         "get",
-        lambda db: None,
+        lambda db, user_id=None: None,
     )
 
     request = ReplanningRequest(
@@ -498,3 +499,172 @@ def test_active_task_replan_excludes_future_tasks(
 
     assert "Tarea activa" in scheduled_titles
     assert "Tarea de mañana" not in scheduled_titles    
+
+def test_replan_from_time_uses_user_id(
+    monkeypatch,
+):
+    service = ReplanningService()
+
+    task = Task(
+        title="Tarea del usuario",
+        estimated_minutes=60,
+        user_id=7,
+    )
+
+    received_user_ids = []
+
+    def fake_get_plannable(
+        db,
+        user_id=None,
+    ):
+        received_user_ids.append(user_id)
+        return [task]
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_plannable",
+        fake_get_plannable,
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+    monkeypatch.setattr(
+        service.planning_workflow_service
+        .recurring_availability_service,
+        "resolve_day_hours",
+        lambda db, user_id, target_date,
+        fallback_start_hour, fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.planning_workflow_service
+        .recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
+    service.replan_from_time(
+        db=None,
+        plan_date=date(2026, 10, 6),
+        planning_start_time=time(10, 0),
+        day_end_hour=20,
+        break_minutes=0,
+        user_id=7,
+    )
+
+    assert received_user_ids == [7]
+
+def test_replan_passes_user_id_to_replan_from_time(
+    monkeypatch,
+):
+    service = ReplanningService()
+
+    expected_plan = PlanningResponse(
+        scheduled_tasks=[],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    received_user_ids = []
+
+    def fake_replan_from_time(
+        db,
+        plan_date,
+        planning_start_time,
+        day_end_hour,
+        break_minutes,
+        busy_blocks,
+        user_id=None,
+    ):
+        received_user_ids.append(user_id)
+        return expected_plan
+
+    monkeypatch.setattr(
+        service,
+        "replan_from_time",
+        fake_replan_from_time,
+    )
+
+    request = ReplanningRequest(
+        plan_date=date(2026, 10, 6),
+        planning_start_time=time(10, 0),
+        user_id=7,
+    )
+
+    result = service.replan(
+        db=None,
+        request=request,
+    )
+
+    assert result == expected_plan
+    assert received_user_ids == [7]    
+
+def test_active_task_replan_uses_user_id(
+    monkeypatch,
+):
+    service = ReplanningService()
+
+    active_task = Task(
+        id=12,
+        user_id=7,
+        title="Tarea activa",
+        estimated_minutes=60,
+        status="en_progreso",
+    )
+
+    received_user_ids = []
+
+    def fake_get_plannable(
+        db,
+        user_id=None,
+    ):
+        received_user_ids.append(user_id)
+        return [active_task]
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.task_service,
+        "get_plannable",
+        fake_get_plannable,
+    )
+
+    monkeypatch.setattr(
+        service.planning_workflow_service.adaptive_profile_service,
+        "get",
+        lambda db, user_id=None: None,
+    )
+    monkeypatch.setattr(
+        service.planning_workflow_service
+        .recurring_availability_service,
+        "resolve_day_hours",
+        lambda db, user_id, target_date,
+        fallback_start_hour, fallback_end_hour: (
+            fallback_start_hour,
+            fallback_end_hour,
+        ),
+    )
+    monkeypatch.setattr(
+        service.planning_workflow_service
+        .recurring_availability_service,
+        "build_unavailable_blocks",
+        lambda db, user_id, target_date: [],
+    )
+    request = ReplanningRequest(
+        plan_date=date(2026, 10, 6),
+        planning_start_time=time(10, 0),
+        user_id=7,
+        active_task_id=12,
+        remaining_minutes=30,
+        day_end_hour=20,
+        break_minutes=0,
+    )
+
+    service.replan(
+        db=None,
+        request=request,
+    )
+
+    assert received_user_ids == [7]    

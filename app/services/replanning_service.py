@@ -17,8 +17,7 @@ class ReplanningService:
     def __init__(self) -> None:
         self.planning_workflow_service = (
             PlanningWorkflowService()
-        )
-
+        )    
     def replan_from_time(
         self,
         db: Session,
@@ -27,11 +26,15 @@ class ReplanningService:
         day_end_hour: int = 20,
         break_minutes: int = 15,
         busy_blocks: list[TimeBlock] | None = None,
+        user_id: int | None = None,
     ) -> PlanningResponse:
         tasks = (
             self.planning_workflow_service
             .task_service
-            .get_plannable(db)
+            .get_plannable(
+                db,
+                user_id=user_id,
+            )
         )
 
         tasks_for_day = [
@@ -51,19 +54,23 @@ class ReplanningService:
             busy_blocks=busy_blocks or [],
         )
 
-
         planning_request = (
             self.planning_workflow_service
             .build_planning_request(
                 db=db,
                 tasks=tasks_for_day,
                 request=request,
+                user_id=user_id,
             )
         )
+
         adaptive_profile = (
             self.planning_workflow_service
             .adaptive_profile_service
-            .get(db)
+            .get(
+                db,
+                user_id=user_id,
+            )
         )
 
         return (
@@ -92,14 +99,17 @@ class ReplanningService:
                 day_end_hour=request.day_end_hour,
                 break_minutes=request.break_minutes,
                 busy_blocks=request.busy_blocks,
+                user_id=request.user_id,
             )
 
         tasks = (
             self.planning_workflow_service
             .task_service
-            .get_plannable(db)
+            .get_plannable(
+                db,
+                user_id=request.user_id,
+            )
         )
-
 
         tasks = [
             task
@@ -134,19 +144,23 @@ class ReplanningService:
             busy_blocks=request.busy_blocks,
         )
 
-
         direct_request = (
             self.planning_workflow_service
             .build_planning_request(
                 db=db,
                 tasks=adjusted_tasks,
                 request=planning_request,
+                user_id=request.user_id,
             )
         )
+
         adaptive_profile = (
             self.planning_workflow_service
             .adaptive_profile_service
-            .get(db)
+            .get(
+                db,
+                user_id=request.user_id,
+            )
         )
 
         return (
@@ -156,4 +170,4 @@ class ReplanningService:
                 request=direct_request,
                 adaptive_profile=adaptive_profile,
             )
-        )    
+        )

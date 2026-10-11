@@ -7,7 +7,10 @@ from app.models.time_block import TimeBlock
 
 class ReplanningRequest(BaseModel):
     plan_date: date = Field(default_factory=date.today)
-
+    user_id: int | None = Field(
+        default=None,
+        ge=1,
+    )
     planning_start_time: time
 
     active_task_id: int | None = None

@@ -281,6 +281,7 @@ class AssistantChatService:
 
         replanning_request = ReplanningRequest(
             plan_date=request.plan_date,
+            user_id=request.user_id,
             planning_start_time=now.time().replace(
                 second=0,
                 microsecond=0,
@@ -301,7 +302,17 @@ class AssistantChatService:
             session_id=request.session_id,
         )
 
+
         if not result.scheduled_tasks:
+            if result.unscheduled_tasks:
+                return AssistantChatResponse(
+                    answer=(
+                        "Tienes tareas pendientes, pero no pude "
+                        "programarlas en el tiempo disponible "
+                        "que queda del día."
+                    )
+                )
+
             return AssistantChatResponse(
                 answer=(
                     "No encontré tareas pendientes "
@@ -426,18 +437,18 @@ class AssistantChatService:
                 )
             )
 
+
         replanning_request = ReplanningRequest(
             plan_date=request.plan_date,
+            user_id=request.user_id,
             planning_start_time=now.time().replace(
                 second=0,
                 microsecond=0,
             ),
-            active_task_id=active_task.id,
-            remaining_minutes=remaining_minutes,
             day_end_hour=request.day_end_hour,
             break_minutes=request.break_minutes,
             busy_blocks=request.busy_blocks,
-        )
+        )        
 
         result = self.replanning_service.replan(
             db=db,

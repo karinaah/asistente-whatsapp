@@ -553,6 +553,69 @@ def test_chat_replanning(monkeypatch):
     assert "reorganicé" in response.answer.lower()
     assert "tarea pendiente" in response.answer.lower()    
 
+def test_chat_replanning_passes_user_id(monkeypatch):
+    service = AssistantChatService()
+
+    received_user_ids = []
+
+    fake_plan = PlanningResponse(
+        scheduled_tasks=[],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    def fake_replan(db, request):
+        received_user_ids.append(request.user_id)
+        return fake_plan
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        fake_replan,
+    )
+
+    service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Reorganiza lo que me queda del día",
+            user_id=7,
+        ),
+    )
+
+    assert received_user_ids == [7]
+
+
+def test_chat_replanning_when_tasks_do_not_fit(monkeypatch):
+    service = AssistantChatService()
+
+    pending_task = Task(
+        title="Preparar presentación",
+        estimated_minutes=120,
+    )
+
+    fake_plan = PlanningResponse(
+        scheduled_tasks=[],
+        unscheduled_tasks=[pending_task],
+        timeline=[],
+    )
+
+    monkeypatch.setattr(
+        service.replanning_service,
+        "replan",
+        lambda db, request: fake_plan,
+    )
+
+    response = service.chat(
+        db=None,
+        request=AssistantChatRequest(
+            message="Reorganiza lo que me queda del día",
+        ),
+    )
+
+    assert "tareas pendientes" in response.answer.lower()
+    assert "no pude" in response.answer.lower()
+    assert "tiempo disponible" in response.answer.lower()    
+
 def test_find_active_scheduled_task():
     service = AssistantChatService()
 
