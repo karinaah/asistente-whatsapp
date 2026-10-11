@@ -46,6 +46,7 @@ from app.services.task_creation_workflow_service import (
 from app.services.temporal_parser import TemporalParser
 from app.services.replanning_service import ReplanningService
 import re
+from app.services.daily_plan_service import DailyPlanService
 
 class AssistantChatService:
     def __init__(self) -> None:
@@ -211,6 +212,7 @@ class AssistantChatService:
             )
         )
 
+
         self.conversation_memory_service.set_last_plan(
             result.response,
             db=db,
@@ -218,6 +220,15 @@ class AssistantChatService:
             user_id=request.user_id,
         )
 
+        if request.user_id is not None:
+            DailyPlanService().save(
+                db=db,
+                user_id=request.user_id,
+                plan_date=request.plan_date,
+                plan=result.response,
+            )
+
+        decisions = result.decisions
 
 
         decisions = result.decisions
@@ -300,7 +311,16 @@ class AssistantChatService:
             result,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
+
+        if request.user_id is not None:
+            DailyPlanService().save(
+                db=db,
+                user_id=request.user_id,
+                plan_date=request.plan_date,
+                plan=result,
+            )
 
 
         if not result.scheduled_tasks:
@@ -459,7 +479,16 @@ class AssistantChatService:
             result,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
+
+        if request.user_id is not None:
+            DailyPlanService().save(
+                db=db,
+                user_id=request.user_id,
+                plan_date=request.plan_date,
+                plan=result,
+            )
 
         scheduled_tasks = sorted(
             result.scheduled_tasks,

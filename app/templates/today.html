@@ -23,7 +23,7 @@
 
         <div class="header">
             <h1>AURA</h1>
-            <p>Tu asistente personal de planificación.</p>
+            <p>Tu asistente personal de planificaciÃ³n.</p>
             <p>Hoy: {{ today }}</p>
         </div>
 
@@ -41,7 +41,7 @@
                             action="/web/notifications/{{ notification.id }}/read"
                         >
                             <button type="submit">
-                                Marcar como leída
+                                Marcar como leÃ­da
                             </button>
                         </form>
                     </div>
@@ -116,16 +116,32 @@
 
         <h2>No programadas</h2>
 
-        
+
         {% for task in plan.unscheduled_tasks %}
             <div class="unscheduled-task">
-                {{ task.title }}
+                <div class="task-title">
+                    {{ task.title }}
+                </div>
+
+                {% if task.id is not none %}
+                    <form
+                        method="post"
+                        action="/web/tasks/{{ task.id }}/complete"
+                    >
+                        <button
+                            type="submit"
+                            class="complete-button"
+                        >
+                            Completar
+                        </button>
+                    </form>
+                {% endif %}
             </div>
         {% else %}
             <p class="empty-state">
                 No tienes tareas pendientes de programar.
             </p>
-        {% endfor %}        
+        {% endfor %}
 
     </div>
 </body>

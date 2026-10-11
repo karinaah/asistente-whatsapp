@@ -3,6 +3,9 @@ from app.models.task import Task, TaskStatus, TaskUpdate
 from app.models.task_db import TaskDB
 from app.repositories.task_repository import TaskRepository
 from app.exceptions.task_exceptions import TaskNotFoundError
+from datetime import date
+
+from app.services.daily_plan_service import DailyPlanService
 
 class TaskService:
     def __init__(self) -> None:
@@ -13,10 +16,21 @@ class TaskService:
         db: Session,
         task: Task,
     ) -> TaskDB:
-        return self.task_repository.save(
+        created_task = self.task_repository.save(
             db=db,
             task=task,
         )
+
+        if created_task.user_id is not None:
+            plan_date = created_task.preferred_date or date.today()
+
+            DailyPlanService().invalidate(
+                db=db,
+                user_id=created_task.user_id,
+                plan_date=plan_date,
+            )
+
+        return created_task
 
     def get_all(self, db: Session) -> list[Task]:
         tasks_db = self.task_repository.get_all(db)
@@ -78,6 +92,7 @@ class TaskService:
             ):
                 return None
 
+
         task = self.task_repository.mark_completed(
             db=db,
             task_id=task_id,
@@ -86,7 +101,15 @@ class TaskService:
         if task is None:
             raise TaskNotFoundError(task_id)
 
+        if task.user_id is not None:
+            DailyPlanService().invalidate(
+                db=db,
+                user_id=task.user_id,
+                plan_date=date.today(),
+            )
+
         return task
+
 
     def delete(
         self,

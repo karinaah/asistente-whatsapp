@@ -1,3 +1,13 @@
+
+from datetime import date
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.config.database import Base
+from app.models.user_db import UserDB
+from app.models.daily_plan_db import DailyPlanDB
+from app.services.daily_plan_service import DailyPlanService
+
 from app.models.assistant_chat import (
     AssistantChatRequest,
 )
@@ -556,6 +566,12 @@ def test_chat_replanning(monkeypatch):
 def test_chat_replanning_passes_user_id(monkeypatch):
     service = AssistantChatService()
 
+    monkeypatch.setattr(
+        DailyPlanService,
+        "save",
+        lambda self, db, user_id, plan_date, plan: None,
+    )
+
     received_user_ids = []
 
     fake_plan = PlanningResponse(
@@ -1011,4 +1027,109 @@ def test_chat_creates_urgent_task_and_replans(
 
     assert "creé la tarea urgente" in response.answer.lower()
     assert "reorganicé" in response.answer.lower()
-    assert "reunión urgente" in response.answer.lower()        
+    assert "reunión urgente" in response.answer.lower()
+
+
+def test_chat_replanning_persists_daily_plan(monkeypatch):
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+
+    Base.metadata.create_all(bind=engine)
+
+    TestingSessionLocal = sessionmaker(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario integraciÃ³n")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        plan_date = date.today()
+
+        save_calls = []
+
+        original_save = DailyPlanService.save
+
+        def spy_save(self, db, user_id, plan_date, plan):
+            save_calls.append({
+                "user_id": user_id,
+                "plan_date": plan_date,
+            })
+            return original_save(
+                self,
+                db=db,
+                user_id=user_id,
+                plan_date=plan_date,
+                plan=plan,
+            )
+
+        monkeypatch.setattr(
+            DailyPlanService,
+            "save",
+            spy_save,
+        )
+
+        task = Task(
+            id=101,
+            user_id=user.id,
+            title="CÃ³digo tesis",
+            estimated_minutes=120,
+        )
+
+        start = datetime.combine(
+            plan_date,
+            datetime.strptime("13:00", "%H:%M").time(),
+        )
+
+        end = datetime.combine(
+            plan_date,
+            datetime.strptime("15:00", "%H:%M").time(),
+        )
+
+        fake_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=start,
+                    end_time=end,
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        monkeypatch.setattr(
+            service.replanning_service,
+            "replan",
+            lambda db, request: fake_plan,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="Reorganiza lo que me queda del dÃ­a",
+                user_id=user.id,
+                plan_date=plan_date,
+            ),
+        )
+
+
+        saved_plan = DailyPlanService().get(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        assert saved_plan is not None
+        assert saved_plan == fake_plan
+        assert saved_plan.scheduled_tasks[0].task.title == "CÃ³digo tesis"
+        assert saved_plan.scheduled_tasks[0].start_time == start
+        assert saved_plan.scheduled_tasks[0].end_time == end
+
+    finally:
+        db.close()
+        engine.dispose()

@@ -1172,6 +1172,7 @@ def test_web_home_can_complete_scheduled_task():
     assert response.status_code == 200
     assert "Tarea dashboard completar test" in response.text
 
+
     assert (
         f'/web/tasks/{task_id}/complete'
         in response.text

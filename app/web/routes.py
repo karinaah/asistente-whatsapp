@@ -33,6 +33,7 @@ from app.models.recurring_availability import (
 from app.repositories.conversation_message_repository import (
     ConversationMessageRepository,
 )
+from app.services.daily_plan_service import DailyPlanService
 
 router = APIRouter()
 
@@ -85,13 +86,34 @@ def home(
         db=db,
     )
 
-    planning_request = PlanningFromDBRequest()
 
-    plan = planning_workflow_service.create_plan_from_db(
+    daily_plan_service = DailyPlanService()
+
+    plan = daily_plan_service.get(
         db=db,
-        request=planning_request,
         user_id=int(user_id),
+        plan_date=today,
     )
+
+    if plan is None:
+        planning_request = PlanningFromDBRequest(
+            plan_date=today,
+        )
+
+        plan = planning_workflow_service.create_plan_from_db(
+            db=db,
+            request=planning_request,
+            user_id=int(user_id),
+        )
+
+        daily_plan_service.save(
+            db=db,
+            user_id=int(user_id),
+            plan_date=today,
+            plan=plan,
+        )
+
+
     scheduled_task_ids = {
         (
             item.start_time,

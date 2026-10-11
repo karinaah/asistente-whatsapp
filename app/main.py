@@ -9,6 +9,7 @@ from app.config.database import Base, engine
 from app.config.logging_config import configure_logging
 from app.config.settings import settings
 from app.models.task_db import TaskDB
+from app.models.daily_plan_db import DailyPlanDB
 from app.handlers.exception_handlers import register_exception_handlers
 from app.api.decision import router as decision_router
 from app.models.human_state_db import HumanStateDB
