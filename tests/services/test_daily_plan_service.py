@@ -284,7 +284,7 @@ def test_invalidate_daily_plan():
     finally:
         db.close()
 
-def test_completing_task_invalidates_daily_plan():
+def test_completing_task_preserves_daily_plan():
     db = create_test_db()
 
     try:
@@ -337,7 +337,320 @@ def test_completing_task_invalidates_daily_plan():
             db=db,
             user_id=user.id,
             plan_date=plan_date,
-        ) is None
+        ) is not None
 
     finally:
         db.close()
+
+def test_save_proposal_preserves_confirmed_plan():
+    db = create_test_db()
+
+    try:
+        user = create_user(db)
+        service = DailyPlanService()
+        plan_date = date(2026, 10, 11)
+
+        task = Task(
+            id=101,
+            user_id=user.id,
+            title="Código tesis",
+            estimated_minutes=60,
+        )
+
+        # Agenda original: 10:00 a 11:00
+        original_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 10, 0),
+                    end_time=datetime(2026, 10, 11, 11, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        # Propuesta: mover la tarea a las 15:00
+        proposed_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 15, 0),
+                    end_time=datetime(2026, 10, 11, 16, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.save(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            plan=original_plan,
+        )
+
+        service.save_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            proposal=proposed_plan,
+        )
+
+        confirmed = service.get(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        proposal = service.get_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        assert confirmed == original_plan
+        assert proposal == proposed_plan
+
+        assert confirmed.scheduled_tasks[0].start_time.hour == 10
+        assert proposal.scheduled_tasks[0].start_time.hour == 15
+
+    finally:
+        db.close()
+
+def test_accept_proposal_updates_confirmed_plan():
+    db = create_test_db()
+
+    try:
+        user = create_user(db)
+        service = DailyPlanService()
+        plan_date = date(2026, 10, 11)
+
+        task = Task(
+            id=101,
+            user_id=user.id,
+            title="Código tesis",
+            estimated_minutes=60,
+        )
+
+        original_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 10, 0),
+                    end_time=datetime(2026, 10, 11, 11, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        proposed_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 15, 0),
+                    end_time=datetime(2026, 10, 11, 16, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.save(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            plan=original_plan,
+        )
+
+        service.save_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            proposal=proposed_plan,
+        )
+
+        service.accept_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        confirmed = service.get(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        pending_proposal = service.get_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        records = db.scalars(
+            select(DailyPlanDB).where(
+                DailyPlanDB.user_id == user.id,
+                DailyPlanDB.plan_date == plan_date,
+            )
+        ).all()
+
+        assert confirmed == proposed_plan
+        assert confirmed.scheduled_tasks[0].start_time.hour == 15
+        assert pending_proposal is None
+        assert len(records) == 1
+
+    finally:
+        db.close()         
+
+def test_reject_proposal_preserves_confirmed_plan():
+    db = create_test_db()
+
+    try:
+        user = create_user(db)
+        service = DailyPlanService()
+        plan_date = date(2026, 10, 11)
+
+        task = Task(
+            id=101,
+            user_id=user.id,
+            title="Código tesis",
+            estimated_minutes=60,
+        )
+
+        original_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 10, 0),
+                    end_time=datetime(2026, 10, 11, 11, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        proposed_plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=task,
+                    start_time=datetime(2026, 10, 11, 15, 0),
+                    end_time=datetime(2026, 10, 11, 16, 0),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.save(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            plan=original_plan,
+        )
+
+        service.save_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            proposal=proposed_plan,
+        )
+
+        service.reject_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        confirmed = service.get(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        pending_proposal = service.get_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        assert confirmed == original_plan
+        assert confirmed.scheduled_tasks[0].start_time.hour == 10
+        assert pending_proposal is None
+
+    finally:
+        db.close()
+
+def test_updating_confirmed_plan_discards_old_proposal():
+    db = create_test_db()
+
+    try:
+        user = create_user(db)
+        service = DailyPlanService()
+        plan_date = date(2026, 10, 11)
+
+        task = Task(
+            id=101,
+            user_id=user.id,
+            title="Código tesis",
+            estimated_minutes=60,
+        )
+
+        def make_plan(hour):
+            return PlanningResponse(
+                scheduled_tasks=[
+                    ScheduledTask(
+                        task=task,
+                        start_time=datetime(2026, 10, 11, hour, 0),
+                        end_time=datetime(2026, 10, 11, hour + 1, 0),
+                    )
+                ],
+                unscheduled_tasks=[],
+                timeline=[],
+            )
+
+        original_plan = make_plan(10)
+        proposed_plan = make_plan(15)
+        updated_plan = make_plan(12)
+
+        service.save(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            plan=original_plan,
+        )
+
+        service.save_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            proposal=proposed_plan,
+        )
+
+        # La agenda confirmada cambia antes
+        # de que se acepte la propuesta.
+        service.save(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+            plan=updated_plan,
+        )
+
+        confirmed = service.get(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        pending_proposal = service.get_proposal(
+            db=db,
+            user_id=user.id,
+            plan_date=plan_date,
+        )
+
+        assert confirmed == updated_plan
+        assert pending_proposal is None
+
+    finally:
+        db.close()        

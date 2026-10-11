@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +8,7 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <div class="container">    
+    <div class="container">
 
         <nav>
             <a href="/web">Hoy</a>
@@ -19,11 +20,11 @@
             <a href="/web/availability">Disponibilidad</a>
             |
             <a href="/web/chat">Chat</a>
-        </nav>        
+        </nav>
 
         <div class="header">
             <h1>AURA</h1>
-            <p>Tu asistente personal de planificaciÃ³n.</p>
+            <p>Tu asistente personal de planificación.</p>
             <p>Hoy: {{ today }}</p>
         </div>
 
@@ -41,13 +42,14 @@
                             action="/web/notifications/{{ notification.id }}/read"
                         >
                             <button type="submit">
-                                Marcar como leÃ­da
+                                Marcar como leída
                             </button>
                         </form>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
+
         <div class="summary">
             <div class="summary-card">
                 <strong>{{ plan.scheduled_tasks | length }}</strong>
@@ -59,6 +61,24 @@
                 <span>Tareas no programadas</span>
             </div>
         </div>
+
+        {% if completed_task_ids %}
+            <div class="replanning-section">
+                <h3>¿Quieres reorganizar tu día?</h3>
+
+                <p>
+                    Has completado una o más tareas.
+                    AURA puede proponerte una nueva
+                    distribución para las actividades pendientes,
+                    manteniendo las tareas ya completadas.
+                </p>
+
+                <p class="task-meta">
+                    Tu agenda actual no cambiará
+                    hasta que aceptes una propuesta.
+                </p>
+            </div>
+        {% endif %}
 
         <h2>Agenda de hoy</h2>
 
@@ -84,27 +104,32 @@
                         Descanso
                     {% endif %}
                 </p>
+
                 {% if block.block_type.value == "task" %}
                     {% set task_id = scheduled_task_ids.get(
                         (block.start_time, block.end_time)
                     ) %}
 
                     {% if task_id %}
-                        <form
-                            method="post"
-                            action="/web/tasks/{{ task_id }}/complete"
-                        >
-                            <button
-                                type="submit"
-                                class="complete-button"
+                        {% if task_id in completed_task_ids %}
+                            <p class="task-meta">
+                                ✓ Completada
+                            </p>
+                        {% else %}
+                            <form
+                                method="post"
+                                action="/web/tasks/{{ task_id }}/complete"
                             >
-                                Completar
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    class="complete-button"
+                                >
+                                    Completar
+                                </button>
+                            </form>
+                        {% endif %}
                     {% endif %}
                 {% endif %}
-
-
 
             </div>
 
@@ -116,7 +141,6 @@
 
         <h2>No programadas</h2>
 
-
         {% for task in plan.unscheduled_tasks %}
             <div class="unscheduled-task">
                 <div class="task-title">
@@ -124,18 +148,25 @@
                 </div>
 
                 {% if task.id is not none %}
-                    <form
-                        method="post"
-                        action="/web/tasks/{{ task.id }}/complete"
-                    >
-                        <button
-                            type="submit"
-                            class="complete-button"
+                    {% if task.id in completed_task_ids %}
+                        <p class="task-meta">
+                            ✓ Completada
+                        </p>
+                    {% else %}
+                        <form
+                            method="post"
+                            action="/web/tasks/{{ task.id }}/complete"
                         >
-                            Completar
-                        </button>
-                    </form>
+                            <button
+                                type="submit"
+                                class="complete-button"
+                            >
+                                Completar
+                            </button>
+                        </form>
+                    {% endif %}
                 {% endif %}
+
             </div>
         {% else %}
             <p class="empty-state">

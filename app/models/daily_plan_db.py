@@ -46,6 +46,10 @@ class DailyPlanDB(Base):
         JSON,
         nullable=False,
     )
+    proposed_plan_data: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
