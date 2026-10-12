@@ -234,3 +234,47 @@ body {
     color: white;
     border-color: #222222;
 }
+
+/* ========================================
+   AURA - Replanificación diaria
+   ======================================== */
+
+.replanning-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.replanning-actions form {
+    margin: 0;
+}
+
+.replan-button {
+    padding: 11px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.replan-accept {
+    background-color: #202124;
+    color: white;
+    border: 1px solid #202124;
+}
+
+.replan-accept:hover {
+    background-color: #414347;
+}
+
+.replan-reject {
+    background-color: white;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.replan-reject:hover {
+    background-color: #f0f0f0;
+}

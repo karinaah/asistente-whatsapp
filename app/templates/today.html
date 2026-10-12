@@ -63,21 +63,99 @@
         </div>
 
         {% if completed_task_ids %}
-            <div class="replanning-section">
-                <h3>¿Quieres reorganizar tu día?</h3>
+        <div class="replanning-section">
+            <h3>¿Quieres reorganizar tu día?</h3>
 
-                <p>
-                    Has completado una o más tareas.
-                    AURA puede proponerte una nueva
-                    distribución para las actividades pendientes,
-                    manteniendo las tareas ya completadas.
-                </p>
+            <p>
+                AURA puede reorganizar las actividades pendientes,
+                respetando las tareas completadas y los horarios fijos.
+            </p>
+
+            <p class="task-meta">
+                Tu agenda actual no cambiará hasta que aceptes
+                explícitamente una propuesta.
+            </p>
+
+            <form action="/web/replan" method="post">
+                <button type="submit">
+                    🔄 Reorganizar mi día
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+
+        {% if replan_error == "outdated" %}
+        <div class="replanning-section" role="alert">
+            <h3>No se pudo aceptar la propuesta</h3>
+
+            <p>
+                La propuesta ya no está actualizada o no está disponible.
+                Tu agenda confirmada no ha cambiado.
+            </p>
+
+            <p>
+                Puedes generar una nueva propuesta con la
+                información actual de tus tareas.
+            </p>
+        </div>
+        {% endif %}
+
+
+
+        {% if proposal %}
+        <section class="replanning-section">
+            <h3>Propuesta de nueva agenda</h3>
+
+            <p>
+                AURA ha preparado una nueva distribución.
+                Tu agenda confirmada sigue intacta.
+            </p>
+
+            <h4>Actividades de la propuesta</h4>
+
+            {% for item in proposal.scheduled_tasks %}
+            <div class="task-card">
+                <strong>{{ item.task.title }}</strong>
 
                 <p class="task-meta">
-                    Tu agenda actual no cambiará
-                    hasta que aceptes una propuesta.
+                    {{ item.start_time.strftime("%H:%M") }}
+                    -
+                    {{ item.end_time.strftime("%H:%M") }}
                 </p>
             </div>
+            {% endfor %}
+
+            {% if proposal.unscheduled_tasks %}
+            <h4>Actividades que no pudieron programarse</h4>
+
+            {% for task in proposal.unscheduled_tasks %}
+            <p>{{ task.title }}</p>
+            {% endfor %}
+            {% endif %}
+
+            <p class="task-meta">
+                Esta es solo una propuesta.
+                Todavía no se ha aplicado ningún cambio.
+            </p>
+            <div class="replanning-actions">
+
+                <form action="/web/replan/accept" method="post">
+                    <button type="submit" class="replan-button replan-accept">
+                        ✓ Aceptar nueva agenda
+                    </button>
+                </form>
+
+                <form action="/web/replan/reject" method="post">
+                    <button type="submit" class="replan-button replan-reject">
+                        ✕ Descartar propuesta
+                    </button>
+                </form>
+
+            </div>
+
+
+        </section>
         {% endif %}
 
         <h2>Agenda de hoy</h2>

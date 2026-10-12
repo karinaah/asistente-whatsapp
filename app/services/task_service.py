@@ -101,13 +101,8 @@ class TaskService:
         if task is None:
             raise TaskNotFoundError(task_id)
 
-        if task.user_id is not None:
-            DailyPlanService().invalidate(
-                db=db,
-                user_id=task.user_id,
-                plan_date=date.today(),
-            )
-
+        # La tarea se completa, pero la planificación vigente
+        # se conserva hasta que el usuario acepte reorganizarla.
         return task
 
 

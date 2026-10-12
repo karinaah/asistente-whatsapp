@@ -3,9 +3,8 @@ from datetime import datetime
 from app.models.schedule import PlanningResponse, ScheduledTask
 from app.models.task import Task
 from app.services.daily_replanning_service import DailyReplanningService
-from app.models.time_block import BlockType
-from app.models.time_block import TimeBlock
-
+from app.models.task import TaskFlexibility
+from app.models.time_block import TimeBlock, BlockType
 def test_separate_protected_and_pending_tasks():
     service = DailyReplanningService()
 
@@ -399,4 +398,201 @@ def test_generate_proposal_does_not_duplicate_breaks():
             assert (
                 first.end_time <= second.start_time
                 or second.end_time <= first.start_time
-            ) 
+            )
+
+def test_replanning_protects_future_fixed_tasks():
+    service = DailyReplanningService()
+
+    now = datetime(2026, 10, 11, 15, 0)
+
+    fixed_task = Task(
+        id=1,
+        user_id=1,
+        title="Clase de yoga",
+        estimated_minutes=60,
+        flexibility=TaskFlexibility.fixed,
+    )
+
+    flexible_task = Task(
+        id=2,
+        user_id=1,
+        title="Estudiar inglés",
+        estimated_minutes=60,
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=fixed_task,
+                start_time=datetime(2026, 10, 11, 18, 0),
+                end_time=datetime(2026, 10, 11, 19, 0),
+            ),
+            ScheduledTask(
+                task=flexible_task,
+                start_time=datetime(2026, 10, 11, 19, 0),
+                end_time=datetime(2026, 10, 11, 20, 0),
+            ),
+        ],
+        unscheduled_tasks=[],
+        timeline=[],
+    )
+
+    protected, pending = service.separate_tasks(
+        plan=plan,
+        completed_task_ids=set(),
+        now=now,
+    )
+
+    assert {item.task.id for item in protected} == {1}
+    assert {item.task.id for item in pending} == {2}
+
+    blocks = service.build_protected_blocks(
+        protected_tasks=protected,
+        now=now,
+    )
+
+    assert len(blocks) == 1
+    assert blocks[0].start_time == datetime(
+        2026, 10, 11, 18, 0
+    )
+    assert blocks[0].end_time == datetime(
+        2026, 10, 11, 19, 0
+    )
+
+def test_replanning_keeps_ongoing_task_without_duplicate_blocks():
+    service = DailyReplanningService()
+
+    now = datetime(2026, 10, 11, 16, 0)
+
+    ongoing_task = Task(
+        id=1,
+        user_id=1,
+        title="Trabajar en AURA",
+        estimated_minutes=120,
+    )
+
+    pending_task = Task(
+        id=2,
+        user_id=1,
+        title="Estudiar inglés",
+        estimated_minutes=60,
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=ongoing_task,
+                start_time=datetime(2026, 10, 11, 15, 0),
+                end_time=datetime(2026, 10, 11, 17, 0),
+            ),
+            ScheduledTask(
+                task=pending_task,
+                start_time=datetime(2026, 10, 11, 18, 0),
+                end_time=datetime(2026, 10, 11, 19, 0),
+            ),
+        ],
+        unscheduled_tasks=[],
+        timeline=[
+            TimeBlock(
+                start_time=datetime(2026, 10, 11, 15, 0),
+                end_time=datetime(2026, 10, 11, 17, 0),
+                title="Trabajar en AURA",
+                block_type=BlockType.TASK,
+            ),
+            TimeBlock(
+                start_time=datetime(2026, 10, 11, 18, 0),
+                end_time=datetime(2026, 10, 11, 19, 0),
+                title="Estudiar inglés",
+                block_type=BlockType.TASK,
+            ),
+        ],
+    )
+
+    proposal = service.generate_proposal(
+        plan=plan,
+        completed_task_ids=set(),
+        now=now,
+    )
+
+    ongoing = [
+        item
+        for item in proposal.scheduled_tasks
+        if item.task.id == 1
+    ]
+
+    assert len(ongoing) == 1
+    assert ongoing[0].start_time == datetime(
+        2026, 10, 11, 15, 0
+    )
+    assert ongoing[0].end_time == datetime(
+        2026, 10, 11, 17, 0
+    )
+
+    ongoing_blocks = [
+        block
+        for block in proposal.timeline
+        if block.title == "Trabajar en AURA"
+        and block.block_type == BlockType.TASK
+    ]
+
+    assert len(ongoing_blocks) == 1
+    assert ongoing_blocks[0].start_time == datetime(
+        2026, 10, 11, 15, 0
+    )
+    assert ongoing_blocks[0].end_time == datetime(
+        2026, 10, 11, 17, 0
+    ) 
+
+def test_replanning_updates_completed_status_without_modifying_original():
+    service = DailyReplanningService()
+
+    now = datetime(2026, 10, 11, 16, 0)
+
+    completed_task = Task(
+        id=1,
+        user_id=1,
+        title="Código tesis",
+        estimated_minutes=120,
+    )
+
+    plan = PlanningResponse(
+        scheduled_tasks=[
+            ScheduledTask(
+                task=completed_task,
+                start_time=datetime(2026, 10, 11, 11, 0),
+                end_time=datetime(2026, 10, 11, 13, 0),
+            ),
+        ],
+        unscheduled_tasks=[],
+        timeline=[
+            TimeBlock(
+                start_time=datetime(2026, 10, 11, 11, 0),
+                end_time=datetime(2026, 10, 11, 13, 0),
+                title="Código tesis",
+                block_type=BlockType.TASK,
+            ),
+        ],
+    )
+
+    original_status = plan.scheduled_tasks[0].task.status
+
+    proposal = service.generate_proposal(
+        plan=plan,
+        completed_task_ids={1},
+        now=now,
+    )
+
+    proposed_task = proposal.scheduled_tasks[0]
+
+    assert proposed_task.task.status.value == "completada"
+
+    assert proposed_task.start_time == datetime(
+        2026, 10, 11, 11, 0
+    )
+    assert proposed_task.end_time == datetime(
+        2026, 10, 11, 13, 0
+    )
+
+    # Generar una propuesta no debe modificar
+    # los datos de la planificación confirmada.
+    assert plan.scheduled_tasks[0].task.status == original_status                 

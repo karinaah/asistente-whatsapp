@@ -34,6 +34,7 @@ from app.repositories.conversation_message_repository import (
     ConversationMessageRepository,
 )
 from app.services.daily_plan_service import DailyPlanService
+from app.services.daily_replanning_service import DailyReplanningService
 
 router = APIRouter()
 
@@ -94,7 +95,11 @@ def home(
         user_id=int(user_id),
         plan_date=today,
     )
-
+    proposal = daily_plan_service.get_proposal(
+        db=db,
+        user_id=int(user_id),
+        plan_date=today,
+    )
     if plan is None:
         planning_request = PlanningFromDBRequest(
             plan_date=today,
@@ -121,6 +126,19 @@ def home(
         ): item.task.id
         for item in plan.scheduled_tasks
     }
+    task_service = TaskService()
+
+    current_tasks = task_service.get_for_user(
+        db=db,
+        user_id=int(user_id),
+    )
+
+    completed_task_ids = {
+        task.id
+        for task in current_tasks
+        if task.status.value == "completada"
+    }
+
 
     notifications = notification_service.get_pending_for_user(
         db=db,
@@ -134,6 +152,9 @@ def home(
             "plan": plan,
             "notifications": notifications,
             "scheduled_task_ids": scheduled_task_ids,
+            "completed_task_ids": completed_task_ids,
+            "proposal": proposal,
+            "replan_error": request.query_params.get("replan_error"),
         },
     )
 
@@ -167,6 +188,14 @@ def complete_task(
         db=db,
         task_id=task_id,
         user_id=int(user_id),
+    )
+
+    daily_plan_service = DailyPlanService()
+
+    daily_plan_service.reject_proposal(
+        db=db,
+        user_id=int(user_id),
+        plan_date=date.today(),
     )
 
     return RedirectResponse(
@@ -803,5 +832,112 @@ def activate_availability_from_web(
 
     return RedirectResponse(
         url="/web/availability",
+        status_code=303,
+    )
+
+@router.post("/web/replan")
+def propose_daily_replanning(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get("aura_user_id")
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web",
+            status_code=303,
+        )
+
+    user_id = int(user_id)
+    now = datetime.now()
+
+    replanning_service = DailyReplanningService()
+
+    plan, completed_task_ids, _ = (
+        replanning_service.get_replanning_context(
+            db=db,
+            user_id=user_id,
+            now=now,
+        )
+    )
+
+    proposal = replanning_service.generate_proposal(
+        plan=plan,
+        completed_task_ids=completed_task_ids,
+        now=now,
+        db=db,
+        user_id=user_id,
+    )
+
+    replanning_service.daily_plan_service.save_proposal(
+        db=db,
+        user_id=user_id,
+        plan_date=now.date(),
+        proposal=proposal,
+    )
+
+    return RedirectResponse(
+        url="/web",
+        status_code=303,
+    )
+
+@router.post("/web/replan/accept")
+def accept_daily_replanning(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get("aura_user_id")
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web",
+            status_code=303,
+        )
+
+    daily_plan_service = DailyPlanService()
+
+    try:
+        daily_plan_service.accept_proposal(
+            db=db,
+            user_id=int(user_id),
+            plan_date=date.today(),
+        )
+    except ValueError:
+        db.rollback()
+
+        return RedirectResponse(
+            url="/web?replan_error=outdated",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url="/web",
+        status_code=303,
+    )
+
+
+@router.post("/web/replan/reject")
+def reject_daily_replanning(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = request.cookies.get("aura_user_id")
+
+    if user_id is None:
+        return RedirectResponse(
+            url="/web",
+            status_code=303,
+        )
+
+    daily_plan_service = DailyPlanService()
+
+    daily_plan_service.reject_proposal(
+        db=db,
+        user_id=int(user_id),
+        plan_date=date.today(),
+    )
+
+    return RedirectResponse(
+        url="/web",
         status_code=303,
     )

@@ -136,6 +136,64 @@ class DailyPlanService:
                 "No existe una propuesta pendiente de aprobación."
             )
 
+        from app.models.task_db import TaskDB
+
+        proposal = PlanningResponse.model_validate(
+            record.proposed_plan_data
+        )
+
+        proposal_task_ids = {
+            item.task.id
+            for item in proposal.scheduled_tasks
+            if item.task.id is not None
+        }
+
+        proposal_task_ids.update(
+            task.id
+            for task in proposal.unscheduled_tasks
+            if task.id is not None
+        )
+
+        if proposal_task_ids:
+            statement = select(TaskDB).where(
+                TaskDB.user_id == user_id,
+                TaskDB.id.in_(proposal_task_ids),
+            )
+
+            current_tasks = db.scalars(statement).all()
+
+
+            proposal_tasks = {
+                item.task.id: item.task
+                for item in proposal.scheduled_tasks
+                if item.task.id is not None
+            }
+
+            proposal_tasks.update({
+                task.id: task
+                for task in proposal.unscheduled_tasks
+                if task.id is not None
+            })
+
+            for task in current_tasks:
+                proposed_task = proposal_tasks.get(task.id)
+
+                if proposed_task is None:
+                    continue
+
+                was_completed = (
+                    proposed_task.status.value == "completada"
+                )
+
+                is_completed = task.status == "completada"
+
+                if is_completed and not was_completed:
+                    raise ValueError(
+                        "La propuesta está desactualizada porque "
+                        "una tarea fue completada después de generarla."
+                    )
+
+
         record.plan_data = record.proposed_plan_data
         record.proposed_plan_data = None
         db.commit()

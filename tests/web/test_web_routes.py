@@ -1247,4 +1247,533 @@ def test_web_cannot_mark_other_user_notification_as_read():
         assert stored_notification.read_at is None
 
     finally:
-        db.close()     
+        db.close()
+
+def test_web_replan_preserves_confirmed_plan():
+    from app.services.daily_plan_service import DailyPlanService
+    from datetime import date
+
+    client.cookies.clear()
+
+    # Crear usuario y planificación inicial.
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        original = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert original is not None
+
+        original_data = original.model_dump(mode="json")
+
+    finally:
+        db.close()
+
+    # Solicitar una propuesta.
+    response = client.post(
+        "/web/replan",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    # Verificar que se guardó una propuesta
+    # sin modificar la planificación confirmada.
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        confirmed = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        proposal = service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert confirmed is not None
+        assert proposal is not None
+
+        assert (
+            confirmed.model_dump(mode="json")
+            == original_data
+        )
+
+    finally:
+        db.close()
+
+def test_web_can_accept_replanning_proposal():
+    from datetime import date
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        original = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert original is not None
+
+        # Guardamos una propuesta identificable.
+        proposal = original.model_copy(deep=True)
+        proposal.unscheduled_tasks = []
+
+        service.save_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+            proposal=proposal,
+        )
+
+        expected_data = proposal.model_dump(mode="json")
+
+    finally:
+        db.close()
+
+    response = client.post(
+        "/web/replan/accept",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        confirmed = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        pending_proposal = service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert confirmed is not None
+        assert confirmed.model_dump(mode="json") == expected_data
+        assert pending_proposal is None
+
+    finally:
+        db.close()
+
+def test_web_can_reject_replanning_proposal():
+    from datetime import date
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        original = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert original is not None
+
+        original_data = original.model_dump(mode="json")
+
+        # Crear una propuesta sin modificar la agenda.
+        proposal = original.model_copy(deep=True)
+        proposal.unscheduled_tasks = []
+
+        service.save_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+            proposal=proposal,
+        )
+
+        assert service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        ) is not None
+
+    finally:
+        db.close()
+
+    # Rechazar la propuesta desde FastAPI.
+    response = client.post(
+        "/web/replan/reject",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        confirmed = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        pending_proposal = service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        # La agenda confirmada permanece intacta.
+        assert confirmed is not None
+        assert (
+            confirmed.model_dump(mode="json")
+            == original_data
+        )
+
+        # La propuesta fue descartada.
+        assert pending_proposal is None
+
+    finally:
+        db.close()
+
+def test_web_completing_task_discards_replanning_proposal():
+    from datetime import date
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=user_id,
+                title="Tarea para invalidar propuesta",
+                estimated_minutes=15,
+            ),
+        )
+        task_id = task.id
+
+    finally:
+        db.close()
+
+    # Crear la planificación y generar una propuesta.
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    response = client.post(
+        "/web/replan",
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        assert service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        ) is not None
+
+        original = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert original is not None
+        original_data = original.model_dump(mode="json")
+
+    finally:
+        db.close()
+
+    # Completar una tarea después de generar la propuesta.
+    response = client.post(
+        f"/web/tasks/{task_id}/complete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        # La propuesta debe desaparecer.
+        assert service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        ) is None
+
+        # La agenda confirmada debe conservarse.
+        confirmed = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        assert confirmed is not None
+        assert confirmed.model_dump(mode="json") == original_data
+
+    finally:
+        db.close()
+
+def test_web_cannot_accept_proposal_with_newly_completed_task():
+    from datetime import date
+
+    from app.models.task_db import TaskDB
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=user_id,
+                title="Tarea pendiente para validar propuesta",
+                estimated_minutes=15,
+            ),
+        )
+        task_id = task.id
+    finally:
+        db.close()
+
+    # Actualizar la planificación para incluir la tarea.
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    # Generar propuesta.
+    response = client.post(
+        "/web/replan",
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        proposal = service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+        assert proposal is not None
+
+        # Simular un cambio externo de estado.
+        task_record = db.get(TaskDB, task_id)
+        assert task_record is not None
+
+        task_record.status = "completada"
+        db.commit()
+
+        # La aceptación debe ser rechazada.
+        import pytest
+
+        with pytest.raises(ValueError, match="desactualizada"):
+            service.accept_proposal(
+                db=db,
+                user_id=user_id,
+                plan_date=today,
+            )
+
+        # La propuesta no debe reemplazar la agenda.
+        assert service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        ) is not None
+
+    finally:
+        db.close()
+
+def test_web_accept_outdated_proposal_redirects_safely(monkeypatch):
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    def reject_outdated_proposal(self, db, user_id, plan_date):
+        raise ValueError("La propuesta está desactualizada.")
+
+    monkeypatch.setattr(
+        DailyPlanService,
+        "accept_proposal",
+        reject_outdated_proposal,
+    )
+
+    response = client.post(
+        "/web/replan/accept",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        response.headers["location"]
+        == "/web?replan_error=outdated"
+    )
+
+    response = client.get(
+        "/web?replan_error=outdated"
+    )
+
+    assert response.status_code == 200
+    assert "No se pudo aceptar la propuesta" in response.text
+
+def test_web_accepts_proposal_with_already_completed_task():
+    from datetime import date
+    from app.services.daily_plan_service import DailyPlanService
+
+    client.cookies.clear()
+
+    response = client.get("/web")
+    assert response.status_code == 200
+
+    user_id = int(client.cookies.get("aura_user_id"))
+    today = date.today()
+
+    db = SessionLocal()
+
+    try:
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=user_id,
+                title="Tarea completada antes de propuesta",
+                estimated_minutes=15,
+            ),
+        )
+
+        task_id = task.id
+        TaskService().mark_completed(
+            db=db,
+            task_id=task_id,
+            user_id=user_id,
+        )
+
+        service = DailyPlanService()
+        original = service.get(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        )
+
+        if original is None:
+            response = client.get("/web")
+            original = service.get(
+                db=db,
+                user_id=user_id,
+                plan_date=today,
+            )
+
+        assert original is not None
+
+        proposal = original.model_copy(deep=True)
+
+        completed_task = next(
+            item for item in TaskService().get_for_user(
+                db=db,
+                user_id=user_id,
+            )
+            if item.id == task_id
+        )
+
+        proposal.unscheduled_tasks.append(completed_task)
+
+        service.save_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+            proposal=proposal,
+        )
+
+    finally:
+        db.close()
+
+    response = client.post(
+        "/web/replan/accept",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    db = SessionLocal()
+
+    try:
+        service = DailyPlanService()
+
+        assert service.get_proposal(
+            db=db,
+            user_id=user_id,
+            plan_date=today,
+        ) is None
+
+    finally:
+        db.close()                    

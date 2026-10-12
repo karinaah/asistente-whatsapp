@@ -13,7 +13,7 @@ from app.models.schedule import (
 from app.services.daily_plan_service import DailyPlanService
 from app.services.task_service import TaskService
 from app.models.time_block import BlockType, TimeBlock
-from app.models.task import Task
+from app.models.task import Task, TaskFlexibility
 from app.services.planning_workflow_service import (
     PlanningWorkflowService,
 )
@@ -78,7 +78,12 @@ class DailyReplanningService:
                 scheduled.start_time <= now
             )
 
-            if is_completed or has_started:
+            is_fixed = (
+                scheduled.task.flexibility
+                == TaskFlexibility.fixed
+            )
+
+            if is_completed or has_started or is_fixed:
                 protected_tasks.append(scheduled)
             else:
                 pending_tasks.append(scheduled)
@@ -222,10 +227,21 @@ class DailyReplanningService:
         )
 
         protected, _ = self.separate_tasks(
-            plan=plan,
-            completed_task_ids=completed_task_ids,
-            now=now,
+            plan, completed_task_ids, now
         )
+
+        # Crear copias independientes para la propuesta.
+        protected = [
+            item.model_copy(deep=True)
+            for item in protected
+        ]
+
+        # Sincronizar el estado de las tareas completadas.
+        for scheduled in protected:
+            if scheduled.task.id in completed_task_ids:
+                scheduled.task.status = type(scheduled.task.status)(
+                    "completada"
+                )
 
         adaptive_profile = None
 
@@ -287,6 +303,18 @@ class DailyReplanningService:
             if block.block_type == BlockType.EVENT
         }
 
+
+        protected_block_keys = {
+            (
+                block.start_time,
+                block.end_time,
+                block.title,
+                block.block_type,
+            )
+            for block in request.busy_blocks
+            if block.block_type == BlockType.TASK
+        }
+
         timeline = historical_blocks + [
             block
             for block in replanned.timeline
@@ -296,6 +324,12 @@ class DailyReplanningService:
                 block.title,
                 block.block_type,
             ) not in original_events
+            and (
+                block.start_time,
+                block.end_time,
+                block.title,
+                block.block_type,
+            ) not in protected_block_keys
             and not (
                 block.block_type == BlockType.EVENT
                 and block.end_time <= now
