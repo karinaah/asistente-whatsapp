@@ -28,11 +28,13 @@ class ConversationMemoryService:
         self,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> ConversationContext:
         if db is not None:
             return self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
 
         return self._context
@@ -41,11 +43,13 @@ class ConversationMemoryService:
         self,
         db: Session | None = None,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
         if db is not None:
             self.repository.clear(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
             return
 
@@ -62,7 +66,9 @@ class ConversationMemoryService:
             context = self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
+
             context.last_intent = intent
 
             self.repository.save(
@@ -88,6 +94,7 @@ class ConversationMemoryService:
             context = self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
 
             context.last_recommendation = (
@@ -114,11 +121,12 @@ class ConversationMemoryService:
         user_id: int | None = None,
     ) -> None:
         if db is not None:
+
             context = self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
-
             context.last_plan = plan
 
             self.repository.save(
@@ -142,8 +150,8 @@ class ConversationMemoryService:
             context = self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
-
             context.awaiting_remaining_minutes = True
             context.pending_active_task_id = task_id
 
@@ -168,6 +176,7 @@ class ConversationMemoryService:
             context = self.repository.get(
                 db,
                 session_id=session_id,
+                user_id=user_id,
             )
 
             context.awaiting_remaining_minutes = False

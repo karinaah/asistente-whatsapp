@@ -137,7 +137,12 @@ def test_web_chat_persists_memory_with_cookie_session():
     session_id = get_response.cookies.get(
         "aura_session_id"
     )
+    user_id = get_response.cookies.get(
+        "aura_user_id"
+    )
 
+    assert session_id is not None
+    assert user_id is not None
     post_response = client.post(
         "/web/chat",
         data={
@@ -161,6 +166,7 @@ def test_web_chat_persists_memory_with_cookie_session():
         context = repository.get(
             db,
             session_id=session_id,
+            user_id=int(user_id),
         )
 
         assert context is not None

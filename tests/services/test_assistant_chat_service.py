@@ -28,7 +28,7 @@ from app.models.task import (
     TaskWorkspace,
 )
 import re
-
+from app.models.recommendation import Recommendation
 
 def test_chat_planning(monkeypatch):
     service = AssistantChatService()
@@ -1133,3 +1133,517 @@ def test_chat_replanning_persists_daily_plan(monkeypatch):
     finally:
         db.close()
         engine.dispose()
+
+def test_chat_allows_owner_to_access_persisted_session():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
+
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+
+        # Creamos memoria persistida para una sesión privada.
+        service.conversation_memory_service.set_awaiting_remaining_minutes(
+            task_id=10,
+            db=db,
+            session_id="owner-chat-session",
+            user_id=user.id,
+        )
+
+        # El propietario intenta continuar su conversación.
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="Hola",
+                session_id="owner-chat-session",
+                user_id=user.id,
+            ),
+        )
+
+        assert response.answer is not None
+
+    finally:
+        db.close()
+
+def test_chat_remaining_minutes_updates_private_session(monkeypatch):
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
+    TestingSessionLocal = sessionmaker(bind=engine)
+
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-replanning-session"
+
+        active_task = Task(
+            id=12,
+            title="Preparar informe",
+            estimated_minutes=60,
+            status="en_progreso",
+        )
+
+        plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=active_task,
+                    start_time=datetime.fromisoformat(
+                        "2026-08-23T14:00:00"
+                    ),
+                    end_time=datetime.fromisoformat(
+                        "2026-08-23T15:00:00"
+                    ),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.conversation_memory_service.set_last_plan(
+            plan,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        service.conversation_memory_service.set_awaiting_remaining_minutes(
+            task_id=12,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        monkeypatch.setattr(
+            service.replanning_service,
+            "replan",
+            lambda db, request: plan,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="40 minutos",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        context = service.conversation_memory_service.get_context(
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        assert "40 minutos" in response.answer.lower()
+        assert context.awaiting_remaining_minutes is False
+        assert context.pending_active_task_id is None
+        assert context.last_plan is not None
+
+    finally:
+        db.close()
+
+def test_chat_remaining_minutes_missing_task_private_session():
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-missing-task-session"
+
+        # Existe un plan, pero no contiene la tarea pendiente.
+        plan = PlanningResponse(
+            scheduled_tasks=[],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.conversation_memory_service.set_last_plan(
+            plan,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        service.conversation_memory_service.set_awaiting_remaining_minutes(
+            task_id=999,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="40 minutos",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        context = service.conversation_memory_service.get_context(
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        assert "no pude encontrar la tarea" in response.answer.lower()
+        assert context.awaiting_remaining_minutes is False
+        assert context.pending_active_task_id is None
+
+    finally:
+        db.close()
+        engine.dispose()
+
+def test_chat_active_task_delay_private_session(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-active-delay-session"
+
+        active_task = Task(
+            id=12,
+            title="Preparar informe",
+            estimated_minutes=60,
+            status="en_progreso",
+        )
+
+        plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=active_task,
+                    start_time=datetime.fromisoformat(
+                        "2026-08-23T14:00:00"
+                    ),
+                    end_time=datetime.fromisoformat(
+                        "2026-08-23T15:00:00"
+                    ),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        service.conversation_memory_service.set_last_plan(
+            plan,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        # Controlamos la detección de la tarea activa.
+        monkeypatch.setattr(
+            service,
+            "_find_active_scheduled_task",
+            lambda plan, now: plan.scheduled_tasks[0],
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="Me atrasé",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        context = service.conversation_memory_service.get_context(
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        assert "cuánto tiempo" in response.answer.lower()
+        assert "preparar informe" in response.answer.lower()
+        assert context.awaiting_remaining_minutes is True
+        assert context.pending_active_task_id == 12
+
+    finally:
+        db.close()
+        engine.dispose()
+
+def test_chat_explanation_uses_private_session_memory(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-explanation-session"
+
+        task = Task(
+            id=12,
+            title="Preparar presentación",
+            estimated_minutes=60,
+        )
+
+        recommendation = Recommendation(
+            task=task,
+            score=0.9,
+            summary="Te recomiendo preparar la presentación.",
+        )
+
+        # Guardamos una recomendación en la sesión privada.
+        service.conversation_memory_service.set_last_recommendation(
+            recommendation,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        # La explicación debe salir de la memoria,
+        # sin consultar el historial.
+        def unexpected_history_access(db):
+            raise AssertionError(
+                "No debería consultar el historial."
+            )
+
+        monkeypatch.setattr(
+            service.recommendation_history_service,
+            "get_latest",
+            unexpected_history_access,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="¿Por qué?",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        assert (
+            "te recomiendo preparar la presentación"
+            in response.answer.lower()
+        )
+
+    finally:
+        db.close()
+        engine.dispose()
+
+def test_chat_follow_up_private_session_returns_next_task():
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-follow-up-session"
+
+        first_task = Task(
+            id=1,
+            title="Preparar presentación",
+            estimated_minutes=60,
+            category="trabajo",
+            context="trabajo",
+        )
+
+        second_task = Task(
+            id=2,
+            title="Responder correos",
+            estimated_minutes=30,
+            category="trabajo",
+            context="trabajo",
+        )
+
+        first_scheduled = ScheduledTask(
+            task=first_task,
+            start_time=datetime.fromisoformat(
+                "2026-08-10T09:00:00"
+            ),
+            end_time=datetime.fromisoformat(
+                "2026-08-10T10:00:00"
+            ),
+        )
+
+        second_scheduled = ScheduledTask(
+            task=second_task,
+            start_time=datetime.fromisoformat(
+                "2026-08-10T10:00:00"
+            ),
+            end_time=datetime.fromisoformat(
+                "2026-08-10T10:30:00"
+            ),
+        )
+
+        plan = PlanningResponse(
+            scheduled_tasks=[
+                first_scheduled,
+                second_scheduled,
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        recommendation = Recommendation(
+            task=first_task,
+            score=0.9,
+            summary="Te recomiendo preparar la presentación.",
+        )
+
+        service.conversation_memory_service.set_last_plan(
+            plan,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        service.conversation_memory_service.set_last_recommendation(
+            recommendation,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="¿Y después?",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        assert "responder correos" in response.answer.lower()
+        assert "10:00" in response.answer
+
+    finally:
+        db.close()
+        engine.dispose()
+
+def test_chat_urgent_task_replans_private_session(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    TestingSessionLocal = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        user = UserDB(name="Usuario propietario")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        service = AssistantChatService()
+        session_id = "private-urgent-task-session"
+
+        urgent_task = Task(
+            id=50,
+            title="Reunión urgente",
+            estimated_minutes=45,
+            priority="alta",
+        )
+
+        monkeypatch.setattr(
+            service.task_creation_workflow_service,
+            "create_from_text",
+            lambda db, text, reference_date: [urgent_task],
+        )
+
+        plan = PlanningResponse(
+            scheduled_tasks=[
+                ScheduledTask(
+                    task=urgent_task,
+                    start_time=datetime.fromisoformat(
+                        "2026-08-23T15:00:00"
+                    ),
+                    end_time=datetime.fromisoformat(
+                        "2026-08-23T15:45:00"
+                    ),
+                )
+            ],
+            unscheduled_tasks=[],
+            timeline=[],
+        )
+
+        monkeypatch.setattr(
+            service.replanning_service,
+            "replan",
+            lambda db, request: plan,
+        )
+
+        # Creamos una sesión privada antes de replanificar.
+        service.conversation_memory_service.set_last_plan(
+            plan,
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        response = service.chat(
+            db=db,
+            request=AssistantChatRequest(
+                message="Reunión urgente de 45 minutos",
+                session_id=session_id,
+                user_id=user.id,
+            ),
+        )
+
+        assert "creé la tarea urgente" in response.answer.lower()
+        assert "reorganicé" in response.answer.lower()
+
+        saved_context = service.conversation_memory_service.get_context(
+            db=db,
+            session_id=session_id,
+            user_id=user.id,
+        )
+
+        assert saved_context.last_plan is not None
+        assert (
+            saved_context.last_plan.scheduled_tasks[0].task.title
+            == "Reunión urgente"
+        )
+
+    finally:
+        db.close()
+        engine.dispose()                                             

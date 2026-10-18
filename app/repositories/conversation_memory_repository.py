@@ -12,6 +12,7 @@ class ConversationMemoryRepository:
         self,
         db: Session,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> ConversationContext:
         context_db = (
             db.query(ConversationContextDB)
@@ -25,7 +26,10 @@ class ConversationMemoryRepository:
 
         if context_db is None:
             return ConversationContext()
-
+        if context_db.user_id is not None and context_db.user_id != user_id:
+            raise PermissionError(
+                "No tienes permiso para consultar esta sesión."
+            )
         return ConversationContext(
             last_intent=(
                 AssistantIntent(context_db.last_intent)
@@ -78,8 +82,10 @@ class ConversationMemoryRepository:
                 user_id=user_id,
             )
             db.add(context_db)
-        elif user_id is not None:
-            context_db.user_id = user_id
+        elif context_db.user_id is not None and context_db.user_id != user_id:
+            raise PermissionError(
+                "No tienes permiso para modificar esta sesión."
+            )
 
 
         context_db.last_intent = (
@@ -121,7 +127,26 @@ class ConversationMemoryRepository:
         self,
         db: Session,
         session_id: str = "default",
+        user_id: int | None = None,
     ) -> None:
+        context_db = (
+            db.query(ConversationContextDB)
+            .filter(
+                ConversationContextDB.session_id == session_id
+            )
+            .first()
+        )
+
+        if context_db is None:
+            return
+
+        if context_db.user_id is not None and context_db.user_id != user_id:
+            raise PermissionError(
+                "No tienes permiso para eliminar esta sesión."
+            )
+
+        db.delete(context_db)
+        db.commit()
         context_db = (
             db.query(ConversationContextDB)
             .filter(

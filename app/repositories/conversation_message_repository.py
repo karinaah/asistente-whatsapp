@@ -40,11 +40,9 @@ class ConversationMessageRepository:
             )
         )
 
-        if user_id is not None:
-            query = query.filter(
-                ConversationMessageDB.user_id
-                == user_id
-            )
+        query = query.filter(
+            ConversationMessageDB.user_id == user_id
+        )
 
         return (
             query

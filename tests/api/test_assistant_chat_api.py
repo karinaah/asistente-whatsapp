@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.user_db import UserDB
-
+from uuid import uuid4
 client = TestClient(app)
 
 
@@ -79,7 +79,7 @@ def test_assistant_chat_persists_user_id():
     )
 
     db = SessionLocal()
-
+    session_id = f"user-api-session-{uuid4().hex}"
     try:
         user = UserDB(
             name="Cinthia",
@@ -93,7 +93,7 @@ def test_assistant_chat_persists_user_id():
             "/assistant/chat",
             json={
                 "message": "Hola",
-                "session_id": "user-api-session",
+                "session_id": session_id,
                 "user_id": user.id,
             },
         )
@@ -104,7 +104,7 @@ def test_assistant_chat_persists_user_id():
             db.query(ConversationContextDB)
             .filter(
                 ConversationContextDB.session_id
-                == "user-api-session"
+                == session_id
             )
             .first()
         )

@@ -44,3 +44,6 @@ credentials.json
 token.json
 google_credentials.json
 google_token.json
+# Local Backups
+*.backup
+*.damaged

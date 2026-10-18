@@ -103,6 +103,7 @@ class AssistantChatService:
             .get_context(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
         )
 
@@ -391,9 +392,9 @@ class AssistantChatService:
             .get_context(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
         )
-
 
         plan = context.last_plan
 
@@ -528,10 +529,9 @@ class AssistantChatService:
             .get_context(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
         )
-
-
 
         remaining_minutes = (
             self._extract_remaining_minutes(
@@ -580,6 +580,7 @@ class AssistantChatService:
             self.conversation_memory_service.clear_awaiting_remaining_minutes(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
 
 
@@ -618,11 +619,13 @@ class AssistantChatService:
             result,
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
 
         self.conversation_memory_service.clear_awaiting_remaining_minutes(
             db=db,
             session_id=request.session_id,
+            user_id=request.user_id,
         )
 
 
@@ -756,10 +759,9 @@ class AssistantChatService:
             .get_context(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
         )
-
-
 
         if context.last_recommendation is not None:
             recommendation = (
@@ -880,9 +882,9 @@ class AssistantChatService:
             .get_context(
                 db=db,
                 session_id=request.session_id,
+                user_id=request.user_id,
             )
         )
-
 
         plan = context.last_plan
 
@@ -1012,6 +1014,7 @@ class AssistantChatService:
                     result,
                     db=db,
                     session_id=request.session_id,
+                    user_id=request.user_id,
                 )
 
 
