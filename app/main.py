@@ -1,5 +1,5 @@
 import logging
-
+from app.api.auth import router as auth_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.api.assistant import router as assistant_router
@@ -84,3 +84,4 @@ app.include_router(
 )
 app.include_router(assistant_chat_router)
 app.include_router(web_router)
+app.include_router(auth_router)

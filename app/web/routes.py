@@ -35,6 +35,8 @@ from app.repositories.conversation_message_repository import (
 )
 from app.services.daily_plan_service import DailyPlanService
 from app.services.daily_replanning_service import DailyReplanningService
+from app.config.auth_dependencies import get_current_user
+from app.models.user_db import UserDB
 
 router = APIRouter()
 
@@ -76,16 +78,14 @@ def get_or_create_web_user_id(
 def home(
     request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
     planning_workflow_service: PlanningWorkflowService = Depends(
         get_planning_workflow_service
     ),
 ):
     today = date.today()
 
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
+    user_id = str(current_user.id)
 
 
     daily_plan_service = DailyPlanService()
@@ -156,13 +156,6 @@ def home(
             "proposal": proposal,
             "replan_error": request.query_params.get("replan_error"),
         },
-    )
-
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
     )
 
     return response
@@ -425,33 +418,20 @@ def edit_task_from_web(
 def routines_page(
     request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
-
     routines = routine_service.get_for_user(
         db=db,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
-    response = templates.TemplateResponse(
+    return templates.TemplateResponse(
         request=request,
         name="routines.html",
         context={
             "routines": routines,
         },
     )
-
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
-    )
-
-    return response
 
 @router.post("/web/routines/create")
 def create_routine_from_web(
@@ -463,11 +443,8 @@ def create_routine_from_web(
     category: str = Form("otro"),
     workspace: str = Form("personal"),
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
 
     parsed_start_time = None
 
@@ -480,7 +457,7 @@ def create_routine_from_web(
         )
 
     routine = Routine(
-        user_id=int(user_id),
+        user_id=current_user.id,
         title=title,
         weekdays=[
             Weekday(weekday)
@@ -505,23 +482,13 @@ def create_routine_from_web(
 @router.post("/web/routines/{routine_id}/deactivate")
 def deactivate_routine_from_web(
     routine_id: int,
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/routines",
-            status_code=303,
-        )
-
     routine_service.set_active(
         db=db,
         routine_id=routine_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
         active=False,
     )
 
@@ -665,23 +632,17 @@ def chat_message(
         url="/web/chat",
         status_code=303,
     )
-
 @router.post("/web/notifications/{notification_id}/read")
 def read_notification(
     notification_id: int,
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
+    notification_service.mark_read(
+        db=db,
+        notification_id=notification_id,
+        user_id=current_user.id,
     )
-
-    if user_id is not None:
-        notification_service.mark_read(
-            db=db,
-            notification_id=notification_id,
-            user_id=int(user_id),
-        )
 
     return RedirectResponse(
         url="/web",

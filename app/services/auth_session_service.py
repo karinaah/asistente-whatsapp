@@ -52,3 +52,62 @@ class AuthSessionService:
         )
 
         return token, session
+
+    def validate_session(
+        self,
+        db: Session,
+        token: str,
+    ) -> AuthSessionDB | None:
+        """Devuelve la sesión si está activa y vigente."""
+
+        if not token:
+            return None
+
+        token_hash = self.hash_token(token)
+
+        session = self.repository.get_by_token_hash(
+            db=db,
+            token_hash=token_hash,
+        )
+
+        if session is None:
+            return None
+
+        if session.revoked_at is not None:
+            return None
+
+        if session.expires_at <= datetime.utcnow():
+            return None
+
+        return session
+
+    def revoke_session(
+        self,
+        db: Session,
+        token: str,
+    ) -> bool:
+        """Revoca una sesión y evita que vuelva a utilizarse."""
+
+        if not token:
+            return False
+
+        token_hash = self.hash_token(token)
+
+        session = self.repository.get_by_token_hash(
+            db=db,
+            token_hash=token_hash,
+        )
+
+        if session is None:
+            return False
+
+        if session.revoked_at is not None:
+            return False
+
+        self.repository.revoke(
+            db=db,
+            session=session,
+            revoked_at=datetime.utcnow(),
+        )
+
+        return True

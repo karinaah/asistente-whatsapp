@@ -12,10 +12,61 @@ from app.models.conversation_message_db import ConversationMessageDB
 client = TestClient(app)
 user_service = UserService()
 
+def login_test_user():
+    from uuid import uuid4
+
+    email = f"web_test_{uuid4().hex}@example.com"
+    password = "SecurePassword123!"
+
+    client.cookies.clear()
+
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "name": "Usuario Test Web",
+        },
+    )
+
+    assert register_response.status_code == 201
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    return client
+
+def get_authenticated_user_id():
+    from app.services.auth_session_service import AuthSessionService
+
+    auth_token = client.cookies.get("aura_auth_token")
+    assert auth_token is not None
+
+    with SessionLocal() as db:
+        auth_session = AuthSessionService().validate_session(
+            db,
+            auth_token,
+        )
+
+        assert auth_session is not None
+        return str(auth_session.user_id)
+
 def test_web_home_returns_200():
-    response = client.get("/web")
+    authenticated_client = login_test_user()
+
+    response = authenticated_client.get("/web")
 
     assert response.status_code == 200
+
+    authenticated_client.post("/auth/logout")
+    authenticated_client.cookies.clear()
 
 def test_web_tasks_returns_200():
     response = client.get("/web/tasks")
@@ -60,33 +111,33 @@ def test_web_chat_creates_user_cookie():
     assert int(user_id) >= 1
 
 def test_web_home_replaces_stale_user_cookie():
-    client.cookies.clear()
+    authenticated_client = login_test_user()
 
-    client.cookies.set(
-        "aura_user_id",
-        "999999999",
-        domain="testserver.local",
-        path="/",
+    # Guardar la sesion autenticada
+    auth_token = authenticated_client.cookies.get(
+        "aura_auth_token"
     )
 
-    response = client.get("/web")
+    assert auth_token is not None
+
+    # Simular una cookie antigua manipulada
+    authenticated_client.cookies.set(
+        "aura_user_id",
+        "999999999",
+    )
+
+    # La sesion autentica debe seguir siendo valida
+    response = authenticated_client.get("/web")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    # La autenticacion no debe depender de la cookie antigua
+    assert authenticated_client.cookies.get(
+        "aura_auth_token"
+    ) == auth_token
 
-    assert user_id is not None
-    assert user_id != "999999999"
-
-    with SessionLocal() as db:
-        user = user_service.get_user(
-            db,
-            user_id=int(user_id),
-        )
-
-    assert user is not None
+    authenticated_client.post("/auth/logout")
+    authenticated_client.cookies.clear()
 
 def test_web_chat_reuses_user_cookie():
     client.cookies.clear()
@@ -227,19 +278,14 @@ def test_web_chat_persists_memory_with_cookie_user():
         db.close()  
 
 def test_web_home_shows_pending_notification():
-    client.cookies.clear()
+    login_test_user()
 
     first_response = client.get("/web")
 
     assert first_response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
-    assert user_id is not None
-
-    from app.config.database import SessionLocal
     from app.models.notification import Notification
     from app.repositories.notification_repository import (
         NotificationRepository,
@@ -278,19 +324,14 @@ def test_web_home_shows_pending_notification():
     )        
 
 def test_web_notification_disappears_after_marking_as_read():
-    client.cookies.clear()
+    login_test_user()
 
     first_response = client.get("/web")
 
     assert first_response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
-    assert user_id is not None
-
-    from app.config.database import SessionLocal
     from app.models.notification import (
         Notification,
         NotificationStatus,
@@ -366,17 +407,13 @@ def test_web_notification_disappears_after_marking_as_read():
     )    
 
 def test_web_routines_shows_only_current_user_routines():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
-
-    assert user_id is not None
+    user_id = get_authenticated_user_id()
 
     from app.config.database import SessionLocal
     from app.models.routine import (
@@ -433,15 +470,13 @@ def test_web_routines_shows_only_current_user_routines():
     assert "Rutina privada v18" not in response.text    
 
 def test_web_can_create_routine():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/routines")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
     assert user_id is not None
 
@@ -497,15 +532,13 @@ def test_web_can_create_routine():
         db.close()    
 
 def test_web_can_deactivate_own_routine():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/routines")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
     assert user_id is not None
 
@@ -568,19 +601,14 @@ def test_web_can_deactivate_own_routine():
         db.close()        
 
 def test_web_cannot_deactivate_other_user_routine():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/routines")
 
     assert response.status_code == 200
 
-    current_user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    current_user_id = get_authenticated_user_id()
 
-    assert current_user_id is not None
-
-    from app.config.database import SessionLocal
     from app.models.routine import (
         Routine,
         Weekday,

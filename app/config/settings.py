@@ -10,6 +10,10 @@ class Settings:
     app_version: str = os.getenv("APP_VERSION", "1.3.0")
     environment: str = os.getenv("ENVIRONMENT", "development")
 
+    @property
+    def cookie_secure(self) -> bool:
+        return self.environment.lower() != "development"
+
     USE_MOCK_AI: bool = (
         os.getenv("USE_MOCK_AI", "true").lower() == "true"
     )
