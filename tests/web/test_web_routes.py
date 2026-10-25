@@ -8,7 +8,7 @@ from app.models.user_db import UserDB
 from app.services.task_service import TaskService
 from app.services.user_service import UserService
 from app.models.conversation_message_db import ConversationMessageDB
-
+from app.models.task import TaskStatus
 client = TestClient(app)
 user_service = UserService()
 
@@ -69,17 +69,24 @@ def test_web_home_returns_200():
     authenticated_client.cookies.clear()
 
 def test_web_tasks_returns_200():
+    login_test_user()
+
     response = client.get("/web/tasks")
 
-    assert response.status_code == 200    
+    assert response.status_code == 200
 
 def test_web_chat_returns_200():
+    login_test_user()
+
     response = client.get("/web/chat")
 
-    assert response.status_code == 200    
+    assert response.status_code == 200
 
 def test_web_chat_creates_session_cookie():
-    client.cookies.clear()
+    login_test_user()
+
+    # Comenzar una conversación nueva.
+    client.cookies.delete("aura_session_id")
 
     response = client.get("/web/chat")
 
@@ -91,24 +98,37 @@ def test_web_chat_creates_session_cookie():
     )
 
     assert session_id is not None
-    assert session_id != ""    
+    assert session_id != ""
+
+    # La identidad autenticada debe mantenerse.
+    assert client.cookies.get("aura_auth_token") is not None
+
+    # El chat no debe generar la antigua cookie de usuario.
+    assert "aura_user_id" not in response.cookies
 
 
-def test_web_chat_creates_user_cookie():
-    client.cookies.clear()
+def test_web_chat_ignores_legacy_user_cookie():
+    login_test_user()
+
+    authenticated_user_id = int(
+        get_authenticated_user_id()
+    )
+
+    # Simular una cookie antigua manipulada.
+    client.cookies.set(
+        "aura_user_id",
+        "999999999",
+    )
 
     response = client.get("/web/chat")
 
     assert response.status_code == 200
-    assert "aura_user_id" in response.cookies
 
-    user_id = response.cookies.get(
-        "aura_user_id"
-    )
+    # La identidad debe seguir siendo la de la sesión autenticada.
+    assert int(get_authenticated_user_id()) == authenticated_user_id
 
-    assert user_id is not None
-    assert user_id != ""
-    assert int(user_id) >= 1
+    # La ruta no debe generar una nueva cookie antigua.
+    assert "aura_user_id" not in response.cookies
 
 def test_web_home_replaces_stale_user_cookie():
     authenticated_client = login_test_user()
@@ -139,61 +159,82 @@ def test_web_home_replaces_stale_user_cookie():
     authenticated_client.post("/auth/logout")
     authenticated_client.cookies.clear()
 
-def test_web_chat_reuses_user_cookie():
-    client.cookies.clear()
+def test_web_chat_preserves_authenticated_user():
+    login_test_user()
 
+    user_id = int(get_authenticated_user_id())
+    auth_token = client.cookies.get("aura_auth_token")
+
+    assert auth_token is not None
+
+    # Primera visita al chat.
     first_response = client.get("/web/chat")
 
-    user_id = first_response.cookies.get(
-        "aura_user_id"
-    )
+    assert first_response.status_code == 200
 
+    # Segunda visita al chat.
     second_response = client.get("/web/chat")
 
     assert second_response.status_code == 200
 
-    assert (
-        client.cookies.get("aura_user_id")
-        == user_id
-    )
+    # La identidad autenticada permanece igual.
+    assert int(get_authenticated_user_id()) == user_id
+
+    # La sesión de autenticación no cambia.
+    assert client.cookies.get("aura_auth_token") == auth_token
+
+    # El chat no genera la antigua cookie de usuario.
+    assert "aura_user_id" not in first_response.cookies
+    assert "aura_user_id" not in second_response.cookies
 
 def test_web_chat_reuses_session_cookie():
-    client.cookies.clear()
+    login_test_user()
+
+    # Comenzar una conversación nueva.
+    client.cookies.delete("aura_session_id")
 
     get_response = client.get("/web/chat")
+
+    assert get_response.status_code == 200
 
     session_id = get_response.cookies.get(
         "aura_session_id"
     )
 
+    assert session_id is not None
+
+    # Enviar un mensaje dentro de la misma conversación.
     post_response = client.post(
         "/web/chat",
         data={
             "message": "Hola",
         },
+        follow_redirects=False,
     )
 
-    assert post_response.status_code == 200
+    assert post_response.status_code == 303
+    assert post_response.headers["location"] == "/web/chat"
 
+    # El identificador de conversación debe conservarse.
     assert (
         client.cookies.get("aura_session_id")
         == session_id
-    )    
+    )
+
+    # La autenticación debe seguir activa.
+    assert client.cookies.get("aura_auth_token") is not None
 
 def test_web_chat_persists_memory_with_cookie_session():
-    client.cookies.clear()
+    login_test_user()
 
     get_response = client.get("/web/chat")
 
     session_id = get_response.cookies.get(
         "aura_session_id"
     )
-    user_id = get_response.cookies.get(
-        "aura_user_id"
-    )
+    user_id = int(get_authenticated_user_id())
 
     assert session_id is not None
-    assert user_id is not None
     post_response = client.post(
         "/web/chat",
         data={
@@ -231,19 +272,16 @@ def test_web_chat_persists_memory_with_cookie_session():
 
 
 def test_web_chat_persists_memory_with_cookie_user():
-    client.cookies.clear()
+    login_test_user()
 
     get_response = client.get("/web/chat")
 
     session_id = get_response.cookies.get(
         "aura_session_id"
     )
-    user_id = get_response.cookies.get(
-        "aura_user_id"
-    )
+    user_id = int(get_authenticated_user_id())
 
     assert session_id is not None
-    assert user_id is not None
 
     post_response = client.post(
         "/web/chat",
@@ -275,7 +313,7 @@ def test_web_chat_persists_memory_with_cookie_user():
         assert context_db.user_id == int(user_id)
 
     finally:
-        db.close()  
+        db.close()
 
 def test_web_home_shows_pending_notification():
     login_test_user()
@@ -321,7 +359,7 @@ def test_web_home_shows_pending_notification():
         "Tienes una tarea pendiente "
         "para completar hoy."
         in response.text
-    )        
+    )
 
 def test_web_notification_disappears_after_marking_as_read():
     login_test_user()
@@ -404,7 +442,7 @@ def test_web_notification_disappears_after_marking_as_read():
     assert (
         "Notificación para cerrar"
         not in response.text
-    )    
+    )
 
 def test_web_routines_shows_only_current_user_routines():
     login_test_user()
@@ -467,7 +505,7 @@ def test_web_routines_shows_only_current_user_routines():
 
     assert response.status_code == 200
     assert "Rutina visible v18" in response.text
-    assert "Rutina privada v18" not in response.text    
+    assert "Rutina privada v18" not in response.text
 
 def test_web_can_create_routine():
     login_test_user()
@@ -529,7 +567,7 @@ def test_web_can_create_routine():
         assert routine.workspace == "personal"
 
     finally:
-        db.close()    
+        db.close()
 
 def test_web_can_deactivate_own_routine():
     login_test_user()
@@ -598,7 +636,7 @@ def test_web_can_deactivate_own_routine():
         assert stored.active is False
 
     finally:
-        db.close()        
+        db.close()
 
 def test_web_cannot_deactivate_other_user_routine():
     login_test_user()
@@ -666,18 +704,16 @@ def test_web_cannot_deactivate_other_user_routine():
         assert stored.active is True
 
     finally:
-        db.close()        
+        db.close()
 
 def test_web_can_activate_own_routine():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/routines")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
     assert user_id is not None
 
@@ -738,18 +774,16 @@ def test_web_can_activate_own_routine():
         assert stored.active is True
 
     finally:
-        db.close()        
+        db.close()
 
 def test_web_availability_shows_only_current_user_availability():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
     assert user_id is not None
 
@@ -810,10 +844,10 @@ def test_web_availability_shows_only_current_user_availability():
     assert "18:00" in response.text
 
     assert "10:00" not in response.text
-    assert "20:00" not in response.text        
+    assert "20:00" not in response.text
 
 def test_web_can_create_availability():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get(
         "/web/availability"
@@ -821,11 +855,8 @@ def test_web_can_create_availability():
 
     assert response.status_code == 200
 
-    user_id = client.cookies.get(
-        "aura_user_id"
-    )
+    user_id = get_authenticated_user_id()
 
-    assert user_id is not None
 
     response = client.post(
         "/web/availability/create",
@@ -873,19 +904,16 @@ def test_web_can_create_availability():
         assert stored.active is True
 
     finally:
-        db.close()    
+        db.close()
 
 def test_web_tasks_shows_only_current_user_tasks():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
 
     assert response.status_code == 200
 
-    user_id = int(
-        client.cookies.get("aura_user_id")
-    )
-
+    user_id = int(get_authenticated_user_id())
     db = SessionLocal()
 
     try:
@@ -923,18 +951,16 @@ def test_web_tasks_shows_only_current_user_tasks():
         assert other_task.title not in response.text
 
     finally:
-        db.close()        
+        db.close()
 
 def test_web_create_task_assigns_current_user():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/tasks")
 
     assert response.status_code == 200
 
-    user_id = int(
-        client.cookies.get("aura_user_id")
-    )
+    user_id = int(get_authenticated_user_id())
 
     response = client.post(
         "/web/tasks/create",
@@ -983,18 +1009,16 @@ def test_web_create_task_assigns_current_user():
         assert task.preferred_time_of_day == "tarde"
         assert task.preferred_start_time.strftime("%H:%M") == "15:30"
     finally:
-        db.close()        
+        db.close()
 
 def test_web_edit_task_updates_planning_fields():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/tasks")
 
     assert response.status_code == 200
 
-    user_id = int(
-        client.cookies.get("aura_user_id")
-    )
+    user_id = int(get_authenticated_user_id())
 
     db = SessionLocal()
 
@@ -1059,10 +1083,74 @@ def test_web_edit_task_updates_planning_fields():
         assert task.preferred_start_time.strftime("%H:%M") == "16:00"
 
     finally:
-        db.close()        
+        db.close()
+
+def test_web_cannot_edit_other_user_task():
+    login_test_user()
+
+    with SessionLocal() as db:
+        other_user = UserDB(name="Other Edit Task User")
+        db.add(other_user)
+        db.commit()
+        db.refresh(other_user)
+
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=other_user.id,
+                title="OTHER USER ORIGINAL TASK",
+                estimated_minutes=30,
+            ),
+        )
+        task_id = task.id
+
+    response = client.post(
+        f"/web/tasks/{task_id}/edit",
+        data={
+            "title": "UNAUTHORIZED EDIT",
+            "estimated_minutes": 90,
+            "priority": "alta",
+            "category": "trabajo",
+            "workspace": "trabajo",
+            "activity_type": "deep_work",
+            "flexibility": "semi_flexible",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    with SessionLocal() as db:
+        task = db.query(TaskDB).filter(
+            TaskDB.id == task_id
+        ).first()
+
+        assert task is not None
+        assert task.title == "OTHER USER ORIGINAL TASK"
+        assert task.estimated_minutes == 30
+
+
+def test_web_edit_task_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/tasks/999999/edit",
+        data={
+            "title": "UNAUTHORIZED EDIT",
+            "estimated_minutes": 90,
+            "priority": "alta",
+            "category": "trabajo",
+            "workspace": "trabajo",
+            "activity_type": "deep_work",
+            "flexibility": "semi_flexible",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
 
 def test_web_chat_persists_user_and_assistant_messages():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/chat")
 
@@ -1072,11 +1160,7 @@ def test_web_chat_persists_user_and_assistant_messages():
         "aura_session_id"
     )
 
-    user_id = int(
-        client.cookies.get(
-            "aura_user_id"
-        )
-    )
+    user_id = int(get_authenticated_user_id())
 
     response = client.post(
         "/web/chat",
@@ -1116,10 +1200,10 @@ def test_web_chat_persists_user_and_assistant_messages():
         assert messages[1].content
 
     finally:
-        db.close()      
+        db.close()
 
 def test_web_chat_refresh_does_not_duplicate_messages():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web/chat")
 
@@ -1129,11 +1213,7 @@ def test_web_chat_refresh_does_not_duplicate_messages():
         "aura_session_id"
     )
 
-    user_id = int(
-        client.cookies.get(
-            "aura_user_id"
-        )
-    )
+    user_id = int(get_authenticated_user_id())
 
     response = client.post(
         "/web/chat",
@@ -1176,15 +1256,15 @@ def test_web_chat_refresh_does_not_duplicate_messages():
         assert messages[1].role == "assistant"
 
     finally:
-        db.close()          
+        db.close()
 
 def test_web_home_can_complete_scheduled_task():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
 
     db = SessionLocal()
 
@@ -1210,17 +1290,98 @@ def test_web_home_can_complete_scheduled_task():
     assert (
         f'/web/tasks/{task_id}/complete'
         in response.text
-    )       
+    )
+
+def test_web_can_complete_own_task():
+    login_test_user()
+    user_id = int(get_authenticated_user_id())
+
+    with SessionLocal() as db:
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=user_id,
+                title="TASK TO COMPLETE",
+                estimated_minutes=30,
+            ),
+        )
+        task_id = task.id
+
+    response = client.post(
+        f"/web/tasks/{task_id}/complete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    with SessionLocal() as db:
+        stored_task = (
+            db.query(TaskDB)
+            .filter(TaskDB.id == task_id)
+            .first()
+        )
+
+        assert stored_task is not None
+        assert stored_task.status == TaskStatus.completed.value
+
+def test_web_cannot_complete_other_user_task():
+    login_test_user()
+
+    with SessionLocal() as db:
+        other_user = UserDB(name="Other Complete Task User")
+        db.add(other_user)
+        db.commit()
+        db.refresh(other_user)
+
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=other_user.id,
+                title="OTHER USER TASK TO PROTECT",
+                estimated_minutes=30,
+            ),
+        )
+
+        task_id = task.id
+        original_status = task.status
+
+    response = client.post(
+        f"/web/tasks/{task_id}/complete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web"
+
+    with SessionLocal() as db:
+        stored_task = (
+            db.query(TaskDB)
+            .filter(TaskDB.id == task_id)
+            .first()
+        )
+
+        assert stored_task is not None
+        assert stored_task.status == original_status
+        assert stored_task.status != TaskStatus.completed.value
+
+def test_web_complete_task_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/tasks/999999/complete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
 
 def test_web_cannot_mark_other_user_notification_as_read():
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    current_user_id = int(
-        client.cookies.get("aura_user_id")
-    )
+    current_user_id = int(get_authenticated_user_id())
 
     from app.models.notification import (
         Notification,
@@ -1287,13 +1448,13 @@ def test_web_replan_preserves_confirmed_plan():
     from app.services.daily_plan_service import DailyPlanService
     from datetime import date
 
-    client.cookies.clear()
+    login_test_user()
 
     # Crear usuario y planificación inicial.
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1357,12 +1518,12 @@ def test_web_can_accept_replanning_proposal():
     from datetime import date
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1426,16 +1587,26 @@ def test_web_can_accept_replanning_proposal():
     finally:
         db.close()
 
+def test_web_accept_replanning_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/replan/accept",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
 def test_web_can_reject_replanning_proposal():
     from datetime import date
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1512,16 +1683,26 @@ def test_web_can_reject_replanning_proposal():
     finally:
         db.close()
 
+def test_web_reject_replanning_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/replan/reject",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
 def test_web_completing_task_discards_replanning_proposal():
     from datetime import date
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1612,12 +1793,12 @@ def test_web_cannot_accept_proposal_with_newly_completed_task():
     from app.models.task_db import TaskDB
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1688,7 +1869,7 @@ def test_web_cannot_accept_proposal_with_newly_completed_task():
 def test_web_accept_outdated_proposal_redirects_safely(monkeypatch):
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
@@ -1724,12 +1905,12 @@ def test_web_accepts_proposal_with_already_completed_task():
     from datetime import date
     from app.services.daily_plan_service import DailyPlanService
 
-    client.cookies.clear()
+    login_test_user()
 
     response = client.get("/web")
     assert response.status_code == 200
 
-    user_id = int(client.cookies.get("aura_user_id"))
+    user_id = int(get_authenticated_user_id())
     today = date.today()
 
     db = SessionLocal()
@@ -1810,4 +1991,474 @@ def test_web_accepts_proposal_with_already_completed_task():
         ) is None
 
     finally:
-        db.close()                    
+        db.close()
+
+def test_web_can_deactivate_own_availability():
+    from datetime import time
+
+    from app.models.recurring_availability import (
+        RecurringAvailability,
+    )
+    from app.models.recurring_availability_db import (
+        RecurringAvailabilityDB,
+    )
+    from app.models.routine import Weekday
+    from app.services.recurring_availability_service import (
+        RecurringAvailabilityService,
+    )
+
+    login_test_user()
+    user_id = int(get_authenticated_user_id())
+
+    with SessionLocal() as db:
+        availability = RecurringAvailabilityService().create(
+            db,
+            RecurringAvailability(
+                user_id=user_id,
+                weekday=Weekday.monday,
+                start_time=time(8, 0),
+                end_time=time(17, 0),
+            ),
+        )
+        availability_id = availability.id
+
+    response = client.post(
+        f"/web/availability/{availability_id}/deactivate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web/availability"
+
+    with SessionLocal() as db:
+        stored = db.get(
+            RecurringAvailabilityDB,
+            availability_id,
+        )
+        assert stored is not None
+        assert stored.active is False
+
+
+def test_web_cannot_deactivate_other_user_availability():
+    from datetime import time
+
+    from app.models.recurring_availability import (
+        RecurringAvailability,
+    )
+    from app.models.recurring_availability_db import (
+        RecurringAvailabilityDB,
+    )
+    from app.models.routine import Weekday
+    from app.services.recurring_availability_service import (
+        RecurringAvailabilityService,
+    )
+    from app.services.user_service import UserService
+
+    login_test_user()
+
+    with SessionLocal() as db:
+        other_user = UserService().create_user(db)
+
+        availability = RecurringAvailabilityService().create(
+            db,
+            RecurringAvailability(
+                user_id=other_user.id,
+                weekday=Weekday.tuesday,
+                start_time=time(10, 0),
+                end_time=time(18, 0),
+            ),
+        )
+        availability_id = availability.id
+
+    response = client.post(
+        f"/web/availability/{availability_id}/deactivate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    with SessionLocal() as db:
+        stored = db.get(
+            RecurringAvailabilityDB,
+            availability_id,
+        )
+        assert stored is not None
+        assert stored.active is True
+
+
+def test_web_can_activate_own_availability():
+    from datetime import time
+
+    from app.models.recurring_availability import (
+        RecurringAvailability,
+    )
+    from app.models.recurring_availability_db import (
+        RecurringAvailabilityDB,
+    )
+    from app.models.routine import Weekday
+    from app.services.recurring_availability_service import (
+        RecurringAvailabilityService,
+    )
+
+    login_test_user()
+    user_id = int(get_authenticated_user_id())
+
+    with SessionLocal() as db:
+        availability_service = RecurringAvailabilityService()
+
+        availability = availability_service.create(
+            db,
+            RecurringAvailability(
+                user_id=user_id,
+                weekday=Weekday.monday,
+                start_time=time(8, 0),
+                end_time=time(17, 0),
+            ),
+        )
+        availability_id = availability.id
+
+        availability_service.set_active(
+            db=db,
+            availability_id=availability_id,
+            user_id=user_id,
+            active=False,
+        )
+
+    response = client.post(
+        f"/web/availability/{availability_id}/activate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web/availability"
+
+    with SessionLocal() as db:
+        stored = db.get(
+            RecurringAvailabilityDB,
+            availability_id,
+        )
+        assert stored is not None
+        assert stored.active is True
+
+
+def test_web_cannot_activate_other_user_availability():
+    from datetime import time
+
+    from app.models.recurring_availability import (
+        RecurringAvailability,
+    )
+    from app.models.recurring_availability_db import (
+        RecurringAvailabilityDB,
+    )
+    from app.models.routine import Weekday
+    from app.services.recurring_availability_service import (
+        RecurringAvailabilityService,
+    )
+    from app.services.user_service import UserService
+
+    login_test_user()
+
+    with SessionLocal() as db:
+        other_user = UserService().create_user(db)
+
+        availability_service = RecurringAvailabilityService()
+
+        availability = availability_service.create(
+            db,
+            RecurringAvailability(
+                user_id=other_user.id,
+                weekday=Weekday.tuesday,
+                start_time=time(10, 0),
+                end_time=time(18, 0),
+            ),
+        )
+        availability_id = availability.id
+
+        availability_service.set_active(
+            db=db,
+            availability_id=availability_id,
+            user_id=other_user.id,
+            active=False,
+        )
+
+    response = client.post(
+        f"/web/availability/{availability_id}/activate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    with SessionLocal() as db:
+        stored = db.get(
+            RecurringAvailabilityDB,
+            availability_id,
+        )
+        assert stored is not None
+        assert stored.active is False
+
+def test_web_availability_requires_authentication():
+    client.cookies.clear()
+
+    response = client.get(
+        "/web/availability",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+    response = client.post(
+        "/web/availability/create",
+        data={
+            "weekday": "0",
+            "start_time": "08:30",
+            "end_time": "17:30",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+    response = client.post(
+        "/web/availability/999999/deactivate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+    response = client.post(
+        "/web/availability/999999/activate",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+
+def test_web_can_delete_own_task():
+    login_test_user()
+    user_id = int(get_authenticated_user_id())
+
+    with SessionLocal() as db:
+        task_service = TaskService()
+
+        task = task_service.create(
+            db,
+            Task(
+                user_id=user_id,
+                title="TASK TO DELETE",
+                estimated_minutes=30,
+            ),
+        )
+
+        task_id = task.id
+
+    response = client.post(
+        f"/web/tasks/{task_id}/delete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/web/tasks"
+
+    with SessionLocal() as db:
+        tasks = TaskService().get_for_user(
+            db=db,
+            user_id=user_id,
+        )
+
+        assert all(
+            task.id != task_id
+            for task in tasks
+        )
+
+def test_web_cannot_delete_other_user_task():
+    login_test_user()
+
+    with SessionLocal() as db:
+        other_user = UserDB(
+            name="Other Delete Task User",
+        )
+        db.add(other_user)
+        db.commit()
+        db.refresh(other_user)
+
+        other_user_id = other_user.id
+
+        task = TaskService().create(
+            db,
+            Task(
+                user_id=other_user_id,
+                title="OTHER USER PROTECTED TASK",
+                estimated_minutes=30,
+            ),
+        )
+
+        task_id = task.id
+
+    response = client.post(
+        f"/web/tasks/{task_id}/delete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    with SessionLocal() as db:
+        tasks = TaskService().get_for_user(
+            db=db,
+            user_id=other_user_id,
+        )
+
+        assert any(
+            task.id == task_id
+            for task in tasks
+        )
+
+def test_web_delete_task_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/tasks/999999/delete",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+def test_web_chat_requires_authentication():
+    client.cookies.clear()
+
+    response = client.get(
+        "/web/chat",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+def test_web_chat_post_requires_authentication():
+    client.cookies.clear()
+
+    response = client.post(
+        "/web/chat",
+        data={
+            "message": "Mensaje sin autenticación",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 401
+
+def test_web_chat_isolates_messages_between_users():
+    from uuid import uuid4
+
+    from app.repositories.conversation_message_repository import (
+        ConversationMessageRepository,
+    )
+
+    repository = ConversationMessageRepository()
+    shared_session_id = str(uuid4())
+
+    # Usuario A.
+    login_test_user()
+    user_a_id = int(get_authenticated_user_id())
+
+    with SessionLocal() as db:
+        repository.add(
+            db=db,
+            session_id=shared_session_id,
+            user_id=user_a_id,
+            role="user",
+            content="Mensaje privado del usuario A",
+        )
+
+    # Usuario B, con la misma sesión de conversación.
+    login_test_user()
+    user_b_id = int(get_authenticated_user_id())
+
+    assert user_a_id != user_b_id
+
+    client.cookies.set(
+        "aura_session_id",
+        shared_session_id,
+    )
+
+    response = client.get("/web/chat")
+
+    assert response.status_code == 200
+    assert "Mensaje privado del usuario A" not in response.text
+
+    with SessionLocal() as db:
+        messages = repository.get_by_session(
+            db=db,
+            session_id=shared_session_id,
+            user_id=user_b_id,
+        )
+
+    assert all(
+        message.content != "Mensaje privado del usuario A"
+        for message in messages
+    )
+
+def test_web_chat_post_ignores_spoofed_user_cookie():
+    from uuid import uuid4
+
+    from app.repositories.conversation_message_repository import (
+        ConversationMessageRepository,
+    )
+
+    repository = ConversationMessageRepository()
+
+    # Crear el primer usuario.
+    login_test_user()
+    user_a_id = int(get_authenticated_user_id())
+
+    # Crear otro usuario e iniciar sesión.
+    login_test_user()
+    user_b_id = int(get_authenticated_user_id())
+
+    assert user_a_id != user_b_id
+
+    session_id = str(uuid4())
+
+    # Intentar suplantar al usuario A mediante la cookie antigua.
+    client.cookies.set(
+        "aura_user_id",
+        str(user_a_id),
+    )
+    client.cookies.set(
+        "aura_session_id",
+        session_id,
+    )
+
+    response = client.post(
+        "/web/chat",
+        data={
+            "message": "Mensaje de prueba de seguridad",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    # Verificar que el mensaje pertenece al usuario B,
+    # que es quien realmente está autenticado.
+    with SessionLocal() as db:
+        messages_b = repository.get_by_session(
+            db=db,
+            session_id=session_id,
+            user_id=user_b_id,
+        )
+
+        messages_a = repository.get_by_session(
+            db=db,
+            session_id=session_id,
+            user_id=user_a_id,
+        )
+
+    assert any(
+        message.role == "user"
+        and message.content == "Mensaje de prueba de seguridad"
+        for message in messages_b
+    )
+
+    assert not any(
+        message.content == "Mensaje de prueba de seguridad"
+        for message in messages_a
+    )

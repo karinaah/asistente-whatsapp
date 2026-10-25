@@ -20,7 +20,6 @@ from app.services.task_service import TaskService
 from app.models.task import Task, TaskUpdate
 from app.models.assistant_chat import AssistantChatRequest
 from app.services.assistant_chat_service import AssistantChatService
-from app.services.user_service import UserService
 from app.services.notification_service import NotificationService
 from app.services.routine_service import RoutineService
 from app.models.routine import Routine, Weekday
@@ -37,12 +36,10 @@ from app.services.daily_plan_service import DailyPlanService
 from app.services.daily_replanning_service import DailyReplanningService
 from app.config.auth_dependencies import get_current_user
 from app.models.user_db import UserDB
-
 router = APIRouter()
 
 templates = Jinja2Templates(directory="app/templates")
 assistant_chat_service = AssistantChatService()
-user_service = UserService()
 notification_service = NotificationService()
 routine_service = RoutineService()
 recurring_availability_service = (
@@ -50,29 +47,6 @@ recurring_availability_service = (
 )
 conversation_message_repository = ConversationMessageRepository()
 
-def get_or_create_web_user_id(
-    request: Request,
-    db: Session,
-) -> str:
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is not None:
-        try:
-            user = user_service.get_user(
-                db,
-                user_id=int(user_id),
-            )
-        except ValueError:
-            user = None
-
-        if user is not None:
-            return str(user.id)
-
-    user = user_service.create_user(db)
-
-    return str(user.id)
 
 @router.get("/web")
 def home(
@@ -163,33 +137,24 @@ def home(
 @router.post("/web/tasks/{task_id}/complete")
 def complete_task(
     task_id: int,
-    request: Request,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web",
-            status_code=303,
-        )
-
-    task_service.mark_completed(
+    completed_task = task_service.mark_completed(
         db=db,
         task_id=task_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
-    daily_plan_service = DailyPlanService()
+    if completed_task is not None:
+        daily_plan_service = DailyPlanService()
 
-    daily_plan_service.reject_proposal(
-        db=db,
-        user_id=int(user_id),
-        plan_date=date.today(),
-    )
+        daily_plan_service.reject_proposal(
+            db=db,
+            user_id=current_user.id,
+            plan_date=date.today(),
+        )
 
     return RedirectResponse(
         url="/web",
@@ -202,14 +167,11 @@ def tasks_page(
     workspace: str | None = None,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
     tasks = task_service.get_for_user(
         db=db,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
     if workspace in {"trabajo", "personal"}:
@@ -219,7 +181,7 @@ def tasks_page(
             if task.workspace.value == workspace
         ]
 
-    response = templates.TemplateResponse(
+    return templates.TemplateResponse(
         request=request,
         name="tasks.html",
         context={
@@ -228,36 +190,17 @@ def tasks_page(
         },
     )
 
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
-    )
-
-    return response
-
 @router.post("/web/tasks/{task_id}/delete")
 def delete_task(
     task_id: int,
-    request: Request,
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/tasks",
-            status_code=303,
-        )
-
     task_service.delete(
         db=db,
         task_id=task_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
     return RedirectResponse(
@@ -285,14 +228,11 @@ def create_task_from_web(
     deadline: str = Form(""),
     preferred_time_of_day: str = Form(""),
     preferred_start_time: str = Form(""),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
 
     task = Task(
-        user_id=int(user_id),
+        user_id=current_user.id,
         title=title,
         estimated_minutes=estimated_minutes,
         priority=priority,
@@ -356,16 +296,9 @@ def edit_task_from_web(
     preferred_start_time: str = Form(""),
     db: Session = Depends(get_db),
     task_service: TaskService = Depends(get_task_service),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
 
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/tasks",
-            status_code=303,
-        )
 
     task_update = TaskUpdate(
         title=title,
@@ -406,7 +339,7 @@ def edit_task_from_web(
         db=db,
         task_id=task_id,
         request=task_update,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
     return RedirectResponse(
@@ -500,23 +433,13 @@ def deactivate_routine_from_web(
 @router.post("/web/routines/{routine_id}/activate")
 def activate_routine_from_web(
     routine_id: int,
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/routines",
-            status_code=303,
-        )
-
     routine_service.set_active(
         db=db,
         routine_id=routine_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
         active=True,
     )
 
@@ -529,6 +452,7 @@ def activate_routine_from_web(
 def chat_page(
     request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
     session_id = request.cookies.get(
         "aura_session_id",
@@ -537,15 +461,10 @@ def chat_page(
     if session_id is None:
         session_id = str(uuid4())
 
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
-
     messages = conversation_message_repository.get_by_session(
         db=db,
         session_id=session_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
     )
 
     response = templates.TemplateResponse(
@@ -563,13 +482,6 @@ def chat_page(
         samesite="lax",
     )
 
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
-    )
-
     return response
 
 
@@ -578,35 +490,25 @@ def chat_message(
     request: Request,
     message: str = Form(...),
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-
     session_id = request.cookies.get(
         "aura_session_id",
-        "default",
     )
 
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
+    if session_id is None:
+        session_id = str(uuid4())
 
     chat_request = AssistantChatRequest(
         message=message,
         session_id=session_id,
-        user_id=(
-            int(user_id)
-            if user_id is not None
-            else None
-        ),
+        user_id=current_user.id,
     )
 
     conversation_message_repository.add(
         db=db,
         session_id=session_id,
-        user_id=(
-            int(user_id)
-            if user_id is not None
-            else None
-        ),
+        user_id=current_user.id,
         role="user",
         content=message,
     )
@@ -619,19 +521,25 @@ def chat_message(
     conversation_message_repository.add(
         db=db,
         session_id=session_id,
-        user_id=(
-            int(user_id)
-            if user_id is not None
-            else None
-        ),
+        user_id=current_user.id,
         role="assistant",
         content=response.answer,
     )
 
-    return RedirectResponse(
+    redirect_response = RedirectResponse(
         url="/web/chat",
         status_code=303,
     )
+
+    redirect_response.set_cookie(
+        key="aura_session_id",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+    )
+
+    return redirect_response
+
 @router.post("/web/notifications/{notification_id}/read")
 def read_notification(
     notification_id: int,
@@ -653,35 +561,22 @@ def read_notification(
 def availability_page(
     request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
-
     availabilities = (
         recurring_availability_service.get_for_user(
             db,
-            user_id=int(user_id),
+            user_id=current_user.id,
         )
     )
 
-    response = templates.TemplateResponse(
+    return templates.TemplateResponse(
         request=request,
         name="availability.html",
         context={
             "availabilities": availabilities,
         },
     )
-
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
-    )
-
-    return response
 
 @router.post("/web/availability/create")
 def create_availability_from_web(
@@ -690,11 +585,8 @@ def create_availability_from_web(
     start_time: str = Form(...),
     end_time: str = Form(...),
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = get_or_create_web_user_id(
-        request=request,
-        db=db,
-    )
 
     start_hour, start_minute = map(
         int,
@@ -708,7 +600,7 @@ def create_availability_from_web(
     recurring_availability_service.create(
         db,
         RecurringAvailability(
-            user_id=int(user_id),
+            user_id=current_user.id,
             weekday=Weekday(weekday),
             start_time=time(
                 start_hour,
@@ -721,42 +613,23 @@ def create_availability_from_web(
         ),
     )
 
-    response = RedirectResponse(
+    return RedirectResponse(
         url="/web/availability",
         status_code=303,
     )
-
-    response.set_cookie(
-        key="aura_user_id",
-        value=user_id,
-        httponly=True,
-        samesite="lax",
-    )
-
-    return response
 
 @router.post(
     "/web/availability/{availability_id}/deactivate"
 )
 def deactivate_availability_from_web(
     availability_id: int,
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/availability",
-            status_code=303,
-        )
-
     recurring_availability_service.set_active(
         db=db,
         availability_id=availability_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
         active=False,
     )
 
@@ -771,23 +644,13 @@ def deactivate_availability_from_web(
 )
 def activate_availability_from_web(
     availability_id: int,
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get(
-        "aura_user_id",
-    )
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web/availability",
-            status_code=303,
-        )
-
     recurring_availability_service.set_active(
         db=db,
         availability_id=availability_id,
-        user_id=int(user_id),
+        user_id=current_user.id,
         active=True,
     )
 
@@ -798,18 +661,10 @@ def activate_availability_from_web(
 
 @router.post("/web/replan")
 def propose_daily_replanning(
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get("aura_user_id")
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web",
-            status_code=303,
-        )
-
-    user_id = int(user_id)
+    user_id = current_user.id
     now = datetime.now()
 
     replanning_service = DailyReplanningService()
@@ -844,23 +699,15 @@ def propose_daily_replanning(
 
 @router.post("/web/replan/accept")
 def accept_daily_replanning(
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get("aura_user_id")
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web",
-            status_code=303,
-        )
-
     daily_plan_service = DailyPlanService()
 
     try:
         daily_plan_service.accept_proposal(
             db=db,
-            user_id=int(user_id),
+            user_id=current_user.id,
             plan_date=date.today(),
         )
     except ValueError:
@@ -876,25 +723,16 @@ def accept_daily_replanning(
         status_code=303,
     )
 
-
 @router.post("/web/replan/reject")
 def reject_daily_replanning(
-    request: Request,
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
-    user_id = request.cookies.get("aura_user_id")
-
-    if user_id is None:
-        return RedirectResponse(
-            url="/web",
-            status_code=303,
-        )
-
     daily_plan_service = DailyPlanService()
 
     daily_plan_service.reject_proposal(
         db=db,
-        user_id=int(user_id),
+        user_id=current_user.id,
         plan_date=date.today(),
     )
 
